@@ -1,0 +1,4 @@
+dataset,severity,approach_frames,detection_count,detection_rate,correct_detection_count,correct_detection_rate,false_positive_count,first_correct_detection_sample,first_correct_detection_route_s_m,first_correct_detection_distance_m,frozen_threshold
+clear,0,101,81,0.801980198019802,81,0.801980198019802,0,1,-50.0,46.806911,0.9529574513435364
+fog45,45,101,14,0.13861386138613863,14,0.13861386138613863,0,67,-17.0,14.529512,0.9529574513435364
+fog90,90,101,5,0.04950495049504951,5,0.04950495049504951,0,77,-12.0,10.05684,0.9529574513435364

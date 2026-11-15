@@ -1,0 +1,17 @@
+CORRECTED LANE RANGE EXTENSION PREREGISTRATION
+
+Distance definition: 3D Euclidean distance from RGB camera to CARLA lane-center point.
+This matches the physical range definition used for STOP signs.
+The earlier route-distance mapping was superseded before any UFLD range-extension outcomes were inspected.
+
+Targets: 25, 30, 35, 40 m
+Minimum eligibility: 50 frames in every controlled configuration
+Primary y=504 result remains unchanged with epsilon=1 px.
+Secondary physical epsilon: 0.0139 m.
+
+      label  nominal_target_m         distance_definition  frozen_row_y  min_eligible_frames_per_trial  minimum_required                status  actual_median_camera_range_m  median_m_per_px
+primary_504               NaN camera_to_lane_3d_euclidean           504                             88                50                  KEEP                      8.912916         0.013552
+ target_25m              25.0 camera_to_lane_3d_euclidean           410                             55                50                  KEEP                     25.053306         0.039001
+ target_30m              30.0 camera_to_lane_3d_euclidean           402                             47                50 INSUFFICIENT_COVERAGE                     29.793306         0.046432
+ target_35m              35.0 camera_to_lane_3d_euclidean           396                             47                50 INSUFFICIENT_COVERAGE                     34.729016         0.054169
+ target_40m              40.0 camera_to_lane_3d_euclidean           391                             47                50 INSUFFICIENT_COVERAGE                     40.310198         0.062906

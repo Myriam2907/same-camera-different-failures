@@ -1,0 +1,43 @@
+==========================================================================================
+COMMON 20–26 m POSITIONS
+==========================================================================================
+Positions: 12
+IDs: [104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115]
+
+==========================================================================================
+AUTO VS MANUAL — SUMMARY
+==========================================================================================
+exposure_mode  severity  mean_intensity_mean  mean_intensity_std  rms_ratio_mean  rms_ratio_std  gradient_ratio_mean  gradient_ratio_std
+    automatic         0            66.342376            0.172883        1.000000       0.000000             1.000000            0.000000
+    automatic        30            97.652900            0.030604        0.775463       0.003149             0.582848            0.001485
+    automatic        45            59.080880            0.147339        0.602625       0.002349             0.440562            0.001013
+       manual         0           110.442116            0.118380        1.000000       0.000000             1.000000            0.000000
+       manual        30           151.252858            0.028646        0.658086       0.001300             0.461038            0.001133
+       manual        45           111.062215            0.177958        0.572103       0.001718             0.402456            0.001092
+
+==========================================================================================
+FOG30 VS FOG45 — PAIRED
+==========================================================================================
+exposure_mode  trial  intensity_30  intensity_45  intensity_45_minus_30  rms_ratio_30  rms_ratio_45  rms_45_minus_30  gradient_ratio_30  gradient_ratio_45  gradient_45_minus_30
+    automatic      1     97.632201     58.943458             -38.688743      0.779165      0.605542        -0.173623           0.584759           0.441663             -0.143096
+    automatic      2     97.661293     58.960650             -38.700643      0.778524      0.604814        -0.173709           0.583905           0.441555             -0.142350
+    automatic      3     97.615178     59.058836             -38.556343      0.773476      0.600875        -0.172601           0.582238           0.440233             -0.142005
+    automatic      4     97.694845     59.137382             -38.557463      0.772291      0.600772        -0.171519           0.582339           0.440028             -0.142311
+    automatic      5     97.660982     59.304077             -38.356906      0.773858      0.601119        -0.172739           0.580998           0.439332             -0.141667
+       manual      1    151.231321    110.830041             -40.401280      0.660224      0.574808        -0.085416           0.462455           0.403625             -0.058830
+       manual      2    151.254090    110.942560             -40.311530      0.657774      0.572298        -0.085476           0.461277           0.403388             -0.057889
+       manual      3    151.238955    111.075677             -40.163278      0.658276      0.572181        -0.086094           0.461577           0.402496             -0.059081
+       manual      4    151.238034    111.208726             -40.029308      0.657183      0.570576        -0.086607           0.460372           0.401730             -0.058642
+       manual      5    151.301889    111.254069             -40.047820      0.656972      0.570650        -0.086322           0.459510           0.401039             -0.058472
+
+==========================================================================================
+SAVED
+==========================================================================================
+/home/cpsslab/same-camera-different-failures/results/final/manual_exposure_control/fig_gradient_auto_vs_manual.png
+/home/cpsslab/same-camera-different-failures/results/final/manual_exposure_control/fig_mean_intensity_auto_vs_manual.png
+/home/cpsslab/same-camera-different-failures/results/final/manual_exposure_control/fig_rms_auto_vs_manual.png
+/home/cpsslab/same-camera-different-failures/results/final/manual_exposure_control/fog30_vs_fog45_paired.csv
+/home/cpsslab/same-camera-different-failures/results/final/manual_exposure_control/per_frame.csv
+/home/cpsslab/same-camera-different-failures/results/final/manual_exposure_control/per_trial.csv
+/home/cpsslab/same-camera-different-failures/results/final/manual_exposure_control/run.log
+/home/cpsslab/same-camera-different-failures/results/final/manual_exposure_control/summary.csv

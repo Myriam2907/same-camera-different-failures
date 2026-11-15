@@ -1,0 +1,120 @@
+==========================================================================================
+HSV MANUAL-EXPOSURE CONTROL
+==========================================================================================
+
+======================================================================
+Severity 0 | Trial 1
+======================================================================
+Correct detection rate: 33.33%
+False positives: 80
+First correct distance: 62.346066
+
+======================================================================
+Severity 0 | Trial 2
+======================================================================
+Correct detection rate: 31.67%
+False positives: 82
+First correct distance: 63.375225
+
+======================================================================
+Severity 0 | Trial 3
+======================================================================
+Correct detection rate: 28.33%
+False positives: 86
+First correct distance: 63.34959
+
+======================================================================
+Severity 0 | Trial 4
+======================================================================
+Correct detection rate: 31.40%
+False positives: 83
+First correct distance: 63.326008
+
+======================================================================
+Severity 0 | Trial 5
+======================================================================
+Correct detection rate: 29.75%
+False positives: 85
+First correct distance: 62.97073
+
+======================================================================
+Severity 30 | Trial 1
+======================================================================
+Correct detection rate: 7.50%
+False positives: 13
+First correct distance: 13.463384
+
+======================================================================
+Severity 30 | Trial 2
+======================================================================
+Correct detection rate: 12.50%
+False positives: 10
+First correct distance: 15.266829
+
+======================================================================
+Severity 30 | Trial 3
+======================================================================
+Correct detection rate: 8.33%
+False positives: 13
+First correct distance: 14.366218
+
+======================================================================
+Severity 30 | Trial 4
+======================================================================
+Correct detection rate: 7.44%
+False positives: 11
+First correct distance: 14.369285
+
+======================================================================
+Severity 30 | Trial 5
+======================================================================
+Correct detection rate: 5.79%
+False positives: 10
+First correct distance: 14.823985
+
+======================================================================
+Severity 45 | Trial 1
+======================================================================
+Correct detection rate: 10.00%
+False positives: 7
+First correct distance: 15.259756
+
+======================================================================
+Severity 45 | Trial 2
+======================================================================
+Correct detection rate: 10.83%
+False positives: 5
+First correct distance: 16.181919
+
+======================================================================
+Severity 45 | Trial 3
+======================================================================
+Correct detection rate: 9.17%
+False positives: 5
+First correct distance: 15.272533
+
+======================================================================
+Severity 45 | Trial 4
+======================================================================
+Correct detection rate: 9.09%
+False positives: 4
+First correct distance: 15.27684
+
+======================================================================
+Severity 45 | Trial 5
+======================================================================
+Correct detection rate: 7.44%
+False positives: 5
+First correct distance: 15.737794
+
+====================================================================================================
+HSV MANUAL-EXPOSURE SUMMARY
+====================================================================================================
+ severity  n_trials  correct_detection_rate_mean_pct  correct_detection_rate_std_pct  first_correct_distance_mean_m  first_correct_distance_std_m  false_positive_mean  R_sign_mean  R_sign_std
+        0         5                          30.8981                          1.9150                        63.0735                        0.4390              83.2000       1.0000      0.0000
+       30         5                           8.3113                          2.5173                        14.4579                        0.6696              11.4000       0.2292      0.0095
+       45         5                           9.3058                          1.2619                        15.5458                        0.4094               5.2000       0.2465      0.0061
+
+Saved:
+/home/cpsslab/same-camera-different-failures/results/final/stop_hsv_manualexp/manual_per_trial.csv
+/home/cpsslab/same-camera-different-failures/results/final/stop_hsv_manualexp/manual_summary.csv

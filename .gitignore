@@ -1,0 +1,6 @@
+
+# Generated CARLA recordings
+data/recordings/
+__pycache__/
+*.pyc
+data/lane_gt_test/

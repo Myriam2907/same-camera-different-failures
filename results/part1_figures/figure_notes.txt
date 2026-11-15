@@ -1,0 +1,30 @@
+FIGURE 1 — QUALITATIVE GRID
+Matched Clear, Fog45, and Fog90 frames at exactly the same
+camera pose. Top row shows Hough lane output. Bottom row shows
+HSV STOP-sign output. The matched geometry isolates weather
+as the changing input condition.
+
+FIGURE 2 — DIVERGENCE
+Each metric is normalized to its own Clear value. Fourier
+spectral distance increases strongly as fog increases, while
+Hough output rate changes non-monotonically, LSD output rate
+decreases, and both STOP-sign correct-detection rates collapse.
+This is the main visual argument that input degradation and
+perception reliability are not equivalent.
+
+FIGURE 3 — STOP RANGE
+The Clear bars are censored because both detectors were already
+correct at the first and farthest evaluated frame. Therefore,
+the clear range is >= 46.81 m rather than exactly 46.81 m.
+
+FIGURE 4 — DEGENERATE LANE METRIC
+The constant x=640 predictor has approximately 0.00034 px error,
+orders of magnitude below Hough and LSD. This demonstrates that
+the frozen centerline geometry makes lane-center localization
+error unsuitable as a primary metric in Part I.
+
+FIGURE 5 — PRELIMINARY ROC
+Uses Fog45 and Fog90 frames only. The positive class is a
+STOP-sign detector failure. Larger Fourier spectral distance is
+treated as stronger evidence of failure. This is preliminary:
+one scene, one deterministic route, and one trial per condition.
