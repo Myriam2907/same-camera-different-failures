@@ -1,7 +1,6 @@
 import os
-import math
+import shutil
 
-import carla
 import cv2
 import numpy as np
 import pandas as pd
@@ -13,63 +12,55 @@ import pandas as pd
 
 IMAGE_W = 1280
 IMAGE_H = 720
-CAMERA_FOV_DEG = 90.0
 
-# Camera mounting used by the recorder.
-CAMERA_X = 1.5
-CAMERA_Y = 0.0
-CAMERA_Z = 1.7
-
-
+# IMPORTANT:
+# During the IoU validation stage we evaluate ONLY the new
+# laterally-varying Clear recording. Old fog recordings used the
+# previous centerline geometry and must not be mixed with this run.
 DATASETS = {
-    "clear": {
-        "root": "data/recordings/stop3_clear_0",
+    "clear_drift": {
+        "root": "data/recordings/stop3_clear_0_drift_0p75",
         "severity": 0,
     },
 
-    "fog45": {
-        "root": "data/recordings/stop3_fog_45",
+    "fog15_drift": {
+        "root": "data/recordings/stop3_fog_15_drift_0p75",
+        "severity": 15,
+    },
+
+    "fog30_drift": {
+        "root": "data/recordings/stop3_fog_30_drift_0p75",
+        "severity": 30,
+    },
+
+    "fog45_drift": {
+        "root": "data/recordings/stop3_fog_45_drift_0p75",
         "severity": 45,
     },
 
-    "fog90": {
-        "root": "data/recordings/stop3_fog_90",
+    "fog60_drift": {
+        "root": "data/recordings/stop3_fog_60_drift_0p75",
+        "severity": 60,
+    },
+
+    "fog75_drift": {
+        "root": "data/recordings/stop3_fog_75_drift_0p75",
+        "severity": 75,
+    },
+
+    "fog90_drift": {
+        "root": "data/recordings/stop3_fog_90_drift_0p75",
         "severity": 90,
     },
 }
 
-
-OUTPUT_ROOT = "results/sign_hsv"
-
+OUTPUT_ROOT = "results/sign_hsv_iou"
 DEBUG_ROOT = os.path.join(
     OUTPUT_ROOT,
     "debug",
 )
 
-
-# ============================================================
-# STOP3 PHYSICAL SIGN LOCATION
-# ============================================================
-
-# Previously identified visible STOP3 sign center in CARLA.
-#
-# IMPORTANT:
-# This is used ONLY after the detector produces its output.
-# It does NOT help the detector choose its candidate.
-
-STOP_SIGN_WORLD_X = 26.04
-STOP_SIGN_WORLD_Y = 75.15
-STOP_SIGN_WORLD_Z = 2.31
-
-
-# Fixed tolerance around the projected GT point.
-#
-# This is not an IoU test.
-# We simply verify that the selected detection contains
-# the physical STOP-sign center, allowing a few pixels
-# for small distant contours / projection approximation.
-
-GT_MARGIN_PX = 8
+IOU_THRESHOLD = 0.50
 
 
 # ============================================================
@@ -116,14 +107,8 @@ MIN_RED_RATIO = 0.20
 # BROAD RUNTIME SEARCH REGION
 # ============================================================
 
-# This is still part of the detector.
-#
-# It removes obviously irrelevant far-left storefronts,
-# but it is deliberately broad enough that the detector
-# can still make mistakes.
-#
-# We do NOT narrow this further after seeing results.
-
+# These are the same runtime detector limits used in the pilot.
+# Ground truth is NOT used to select a candidate.
 SEARCH_X_MIN = int(
     0.45 * IMAGE_W
 )
@@ -142,224 +127,223 @@ SEARCH_Y_MAX = int(
 
 
 # ============================================================
-# CAMERA PROJECTION
+# OUTPUT
 # ============================================================
 
-def get_camera_matrix():
-    """
-    Build the 3x3 pinhole camera intrinsic matrix.
-    """
+def reset_output_directory():
 
-    focal = (
-        IMAGE_W
-        / (
-            2.0
-            * math.tan(
-                math.radians(
-                    CAMERA_FOV_DEG
-                ) / 2.0
-            )
+    if os.path.exists(
+        OUTPUT_ROOT
+    ):
+
+        print(
+            "Deleting old IoU-validation results:",
+            OUTPUT_ROOT,
         )
+
+        shutil.rmtree(
+            OUTPUT_ROOT
+        )
+
+    os.makedirs(
+        DEBUG_ROOT,
+        exist_ok=True,
     )
 
-    K = np.array(
-        [
-            [
-                focal,
-                0.0,
-                IMAGE_W / 2.0,
-            ],
 
-            [
-                0.0,
-                focal,
-                IMAGE_H / 2.0,
-            ],
+# ============================================================
+# GROUND-TRUTH HELPERS
+# ============================================================
 
-            [
-                0.0,
-                0.0,
-                1.0,
-            ],
-        ],
-        dtype=np.float64,
-    )
-
-    return K
+GT_COLUMNS = [
+    "sign_bbox_x1",
+    "sign_bbox_y1",
+    "sign_bbox_x2",
+    "sign_bbox_y2",
+]
 
 
-CAMERA_K = get_camera_matrix()
+def validate_metadata_columns(
+    metadata,
+    csv_path,
+):
+
+    required = [
+        "sample_id",
+        "weather",
+        "severity",
+        "route_s_m",
+        "distance_to_sign_m",
+        "sign_in_view",
+        *GT_COLUMNS,
+    ]
+
+    missing = [
+        column
+        for column in required
+        if column not in metadata.columns
+    ]
+
+    if missing:
+
+        raise RuntimeError(
+            "This recording does not contain the new STOP-sign "
+            "bounding-box ground truth required for IoU evaluation.\n"
+            f"Missing columns: {missing}\n"
+            f"CSV: {csv_path}\n"
+            "Re-record the Clear validation dataset with the updated "
+            "carla/collect_data.py first."
+        )
 
 
-def build_camera_transform_from_row(
+def gt_box_from_row(
     row,
 ):
-    """
-    Reconstruct camera world pose from the recorded
-    ego vehicle pose.
 
-    The camera had relative location:
+    if int(
+        row["sign_in_view"]
+    ) != 1:
 
-        x = 1.5 m forward
-        y = 0
-        z = 1.7 m upward
-
-    and zero relative rotation.
-    """
-
-    ego_transform = carla.Transform(
-        carla.Location(
-            x=float(
-                row["ego_x"]
-            ),
-            y=float(
-                row["ego_y"]
-            ),
-            z=float(
-                row["ego_z"]
-            ),
-        ),
-
-        carla.Rotation(
-            pitch=float(
-                row["ego_pitch"]
-            ),
-            yaw=float(
-                row["ego_yaw"]
-            ),
-            roll=float(
-                row["ego_roll"]
-            ),
-        ),
-    )
-
-    relative_camera_location = (
-        carla.Location(
-            x=CAMERA_X,
-            y=CAMERA_Y,
-            z=CAMERA_Z,
-        )
-    )
-
-    camera_world_location = (
-        ego_transform.transform(
-            relative_camera_location
-        )
-    )
-
-    camera_transform = carla.Transform(
-        camera_world_location,
-        carla.Rotation(
-            pitch=float(
-                row["ego_pitch"]
-            ),
-            yaw=float(
-                row["ego_yaw"]
-            ),
-            roll=float(
-                row["ego_roll"]
-            ),
-        ),
-    )
-
-    return camera_transform
-
-
-def project_stop_sign_center(
-    row,
-):
-    """
-    Project physical STOP-sign center into the RGB image.
-
-    CARLA / Unreal camera coordinates:
-
-        x = forward
-        y = right
-        z = up
-
-    Computer-vision camera coordinates use:
-
-        horizontal = y
-        vertical   = -z
-        depth      = x
-    """
-
-    camera_transform = (
-        build_camera_transform_from_row(
-            row
-        )
-    )
-
-    world_to_camera = np.array(
-        camera_transform.get_inverse_matrix(),
-        dtype=np.float64,
-    )
-
-    point_world = np.array(
-        [
-            STOP_SIGN_WORLD_X,
-            STOP_SIGN_WORLD_Y,
-            STOP_SIGN_WORLD_Z,
-            1.0,
-        ],
-        dtype=np.float64,
-    )
-
-    point_camera = (
-        world_to_camera
-        @ point_world
-    )
-
-    forward = float(
-        point_camera[0]
-    )
-
-    right = float(
-        point_camera[1]
-    )
-
-    up = float(
-        point_camera[2]
-    )
-
-    # Sign behind camera.
-    if forward <= 0.0:
         return None
 
-    fx = CAMERA_K[0, 0]
-    fy = CAMERA_K[1, 1]
+    values = [
+        float(row[column])
+        for column in GT_COLUMNS
+    ]
 
-    cx = CAMERA_K[0, 2]
-    cy = CAMERA_K[1, 2]
+    if not np.all(
+        np.isfinite(values)
+    ):
 
-    image_x = (
-        fx
-        * (
-            right
-            / forward
-        )
-        + cx
+        return None
+
+    x1, y1, x2, y2 = values
+
+    if (
+        x2 <= x1
+        or y2 <= y1
+    ):
+
+        return None
+
+    return (
+        x1,
+        y1,
+        x2,
+        y2,
     )
 
-    image_y = (
-        fy
-        * (
-            -up
-            / forward
-        )
-        + cy
+
+def candidate_box(
+    candidate,
+):
+
+    if candidate is None:
+        return None
+
+    x1 = float(
+        candidate["x"]
     )
 
-    if not (
-        np.isfinite(image_x)
-        and np.isfinite(image_y)
+    y1 = float(
+        candidate["y"]
+    )
+
+    x2 = (
+        x1
+        + float(candidate["w"])
+    )
+
+    y2 = (
+        y1
+        + float(candidate["h"])
+    )
+
+    if (
+        x2 <= x1
+        or y2 <= y1
     ):
         return None
 
     return (
-        float(image_x),
-        float(image_y),
-        float(forward),
+        x1,
+        y1,
+        x2,
+        y2,
+    )
+
+
+def box_iou(
+    box_a,
+    box_b,
+):
+
+    if (
+        box_a is None
+        or box_b is None
+    ):
+        return np.nan
+
+    ax1, ay1, ax2, ay2 = box_a
+    bx1, by1, bx2, by2 = box_b
+
+    inter_x1 = max(
+        ax1,
+        bx1,
+    )
+
+    inter_y1 = max(
+        ay1,
+        by1,
+    )
+
+    inter_x2 = min(
+        ax2,
+        bx2,
+    )
+
+    inter_y2 = min(
+        ay2,
+        by2,
+    )
+
+    inter_w = max(
+        0.0,
+        inter_x2 - inter_x1,
+    )
+
+    inter_h = max(
+        0.0,
+        inter_y2 - inter_y1,
+    )
+
+    intersection = (
+        inter_w
+        * inter_h
+    )
+
+    area_a = (
+        max(0.0, ax2 - ax1)
+        * max(0.0, ay2 - ay1)
+    )
+
+    area_b = (
+        max(0.0, bx2 - bx1)
+        * max(0.0, by2 - by1)
+    )
+
+    union = (
+        area_a
+        + area_b
+        - intersection
+    )
+
+    if union <= 0.0:
+        return 0.0
+
+    return float(
+        intersection
+        / union
     )
 
 
@@ -370,13 +354,6 @@ def project_stop_sign_center(
 def make_red_mask(
     image,
 ):
-    """
-    BGR
-    -> HSV
-    -> two red masks
-    -> opening
-    -> closing
-    """
 
     hsv = cv2.cvtColor(
         image,
@@ -451,11 +428,11 @@ def inside_search_region(
 def find_stop_candidates(
     mask,
 ):
+
     """
     Runtime detector.
 
-    Notice that this function knows NOTHING about
-    the CARLA ground-truth STOP-sign position.
+    Ground-truth information is deliberately absent here.
     """
 
     contours, _ = cv2.findContours(
@@ -501,10 +478,6 @@ def find_stop_candidates(
         ):
             continue
 
-        # ----------------------------------------------------
-        # Aspect ratio
-        # ----------------------------------------------------
-
         aspect = (
             float(w)
             / float(h)
@@ -517,16 +490,12 @@ def find_stop_candidates(
         ):
             continue
 
-        # ----------------------------------------------------
-        # Polygon
-        # ----------------------------------------------------
-
         perimeter = cv2.arcLength(
             contour,
             True,
         )
 
-        if perimeter <= 0:
+        if perimeter <= 0.0:
             continue
 
         approx = cv2.approxPolyDP(
@@ -545,10 +514,6 @@ def find_stop_candidates(
             <= MAX_VERTICES
         ):
             continue
-
-        # ----------------------------------------------------
-        # Red occupancy
-        # ----------------------------------------------------
 
         roi_mask = mask[
             y:y + h,
@@ -573,22 +538,11 @@ def find_stop_candidates(
         ):
             continue
 
-        # ----------------------------------------------------
-        # Convexity
-        # ----------------------------------------------------
-
         is_convex = bool(
             cv2.isContourConvex(
                 approx
             )
         )
-
-        # ----------------------------------------------------
-        # Candidate scoring
-        #
-        # IMPORTANT:
-        # Ground truth does not appear here.
-        # ----------------------------------------------------
 
         vertex_score = (
             1.0
@@ -690,7 +644,8 @@ def detect_stop_sign(
             [],
         )
 
-    # Runtime output = highest scoring candidate.
+    # Same pilot rule:
+    # runtime output is the highest-scoring candidate.
     return (
         candidates[0],
         mask,
@@ -699,97 +654,58 @@ def detect_stop_sign(
 
 
 # ============================================================
-# EVALUATION
-# ============================================================
-
-def candidate_matches_gt(
-    candidate,
-    gt_projection,
-):
-    """
-    Evaluation ONLY.
-
-    Correct detection if the projected physical STOP-sign
-    center lies inside the selected candidate box, allowing
-    a fixed small pixel margin.
-
-    No IoU is used.
-    """
-
-    if (
-        candidate is None
-        or gt_projection is None
-    ):
-        return False
-
-    gt_x = gt_projection[0]
-    gt_y = gt_projection[1]
-
-    x1 = (
-        candidate["x"]
-        - GT_MARGIN_PX
-    )
-
-    y1 = (
-        candidate["y"]
-        - GT_MARGIN_PX
-    )
-
-    x2 = (
-        candidate["x"]
-        + candidate["w"]
-        + GT_MARGIN_PX
-    )
-
-    y2 = (
-        candidate["y"]
-        + candidate["h"]
-        + GT_MARGIN_PX
-    )
-
-    return (
-        x1
-        <= gt_x
-        <= x2
-
-        and
-
-        y1
-        <= gt_y
-        <= y2
-    )
-
-
-# ============================================================
 # DEBUG IMAGE
 # ============================================================
+
+def draw_box(
+    image,
+    box,
+    color,
+    thickness,
+):
+
+    if box is None:
+        return
+
+    x1, y1, x2, y2 = box
+
+    cv2.rectangle(
+        image,
+        (
+            int(round(x1)),
+            int(round(y1)),
+        ),
+        (
+            int(round(x2)),
+            int(round(y2)),
+        ),
+        color,
+        thickness,
+    )
+
 
 def save_debug(
     image,
     mask,
     candidates,
     best,
-    gt_projection,
+    gt_box,
+    iou_value,
     correct_detection,
     output_path,
     distance_to_sign,
     route_s,
 ):
-    """
-    Colors:
 
-        blue    = broad detector search region
-        magenta = projected physical STOP-sign center
-        green   = selected candidate is correct
-        red     = selected candidate is false positive
-        yellow  = other runtime candidates
+    """
+    Blue    = broad runtime search region
+    Magenta = projected CARLA visual STOP-sign GT box
+    Green   = selected candidate has IoU >= 0.50
+    Red     = selected candidate is false positive
+    Yellow  = other runtime candidates
     """
 
     vis = image.copy()
-
-    # --------------------------------------------------------
-    # Runtime search region
-    # --------------------------------------------------------
 
     cv2.rectangle(
         vis,
@@ -809,29 +725,15 @@ def save_debug(
         2,
     )
 
-    # --------------------------------------------------------
-    # Other candidates
-    # --------------------------------------------------------
-
     for candidate in candidates:
 
         if candidate is best:
             continue
 
-        x = candidate["x"]
-        y = candidate["y"]
-        w = candidate["w"]
-        h = candidate["h"]
-
-        cv2.rectangle(
+        draw_box(
             vis,
-            (
-                x,
-                y,
-            ),
-            (
-                x + w,
-                y + h,
+            candidate_box(
+                candidate
             ),
             (
                 0,
@@ -841,20 +743,24 @@ def save_debug(
             1,
         )
 
-    # --------------------------------------------------------
-    # Selected runtime candidate
-    # --------------------------------------------------------
+    if gt_box is not None:
+
+        draw_box(
+            vis,
+            gt_box,
+            (
+                255,
+                0,
+                255,
+            ),
+            3,
+        )
 
     if best is not None:
 
-        x = best["x"]
-        y = best["y"]
-        w = best["w"]
-        h = best["h"]
-
         if correct_detection:
 
-            box_color = (
+            selected_color = (
                 0,
                 255,
                 0,
@@ -862,83 +768,20 @@ def save_debug(
 
         else:
 
-            box_color = (
+            selected_color = (
                 0,
                 0,
                 255,
             )
 
-        cv2.rectangle(
+        draw_box(
             vis,
-            (
-                x,
-                y,
+            candidate_box(
+                best
             ),
-            (
-                x + w,
-                y + h,
-            ),
-            box_color,
+            selected_color,
             3,
         )
-
-    # --------------------------------------------------------
-    # Projected CARLA sign center
-    # --------------------------------------------------------
-
-    if gt_projection is not None:
-
-        gt_x = int(
-            round(
-                gt_projection[0]
-            )
-        )
-
-        gt_y = int(
-            round(
-                gt_projection[1]
-            )
-        )
-
-        if (
-            0 <= gt_x < IMAGE_W
-            and
-            0 <= gt_y < IMAGE_H
-        ):
-
-            cv2.circle(
-                vis,
-                (
-                    gt_x,
-                    gt_y,
-                ),
-                7,
-                (
-                    255,
-                    0,
-                    255,
-                ),
-                -1,
-            )
-
-            cv2.circle(
-                vis,
-                (
-                    gt_x,
-                    gt_y,
-                ),
-                12,
-                (
-                    255,
-                    0,
-                    255,
-                ),
-                2,
-            )
-
-    # --------------------------------------------------------
-    # Label
-    # --------------------------------------------------------
 
     if best is None:
 
@@ -958,8 +801,23 @@ def save_debug(
             "FALSE POSITIVE"
         )
 
+    if np.isfinite(
+        iou_value
+    ):
+
+        iou_text = (
+            f"IoU={iou_value:.3f}"
+        )
+
+    else:
+
+        iou_text = (
+            "IoU=N/A"
+        )
+
     text = (
         f"{status} | "
+        f"{iou_text} | "
         f"route={route_s:+.1f}m | "
         f"sign={distance_to_sign:.1f}m"
     )
@@ -972,7 +830,7 @@ def save_debug(
             45,
         ),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.67,
+        0.62,
         (
             0,
             0,
@@ -989,15 +847,13 @@ def save_debug(
         exist_ok=True,
     )
 
-    success = cv2.imwrite(
+    if not cv2.imwrite(
         output_path,
         vis,
-    )
-
-    if not success:
+    ):
 
         raise RuntimeError(
-            f"Could not save debug image: "
+            "Could not save debug image: "
             f"{output_path}"
         )
 
@@ -1039,7 +895,7 @@ def process_dataset(
     ):
 
         raise RuntimeError(
-            f"Missing metadata: "
+            "Missing metadata: "
             f"{csv_path}"
         )
 
@@ -1047,13 +903,13 @@ def process_dataset(
         csv_path
     )
 
+    validate_metadata_columns(
+        metadata,
+        csv_path,
+    )
+
     rows = []
-
     debug_cache = {}
-
-    # ========================================================
-    # RUN DETECTOR
-    # ========================================================
 
     for _, row in metadata.iterrows():
 
@@ -1083,13 +939,9 @@ def process_dataset(
         if image is None:
 
             raise RuntimeError(
-                f"Could not read image: "
+                "Could not read image: "
                 f"{image_path}"
             )
-
-        # ----------------------------------------------------
-        # Runtime detector
-        # ----------------------------------------------------
 
         (
             best,
@@ -1103,50 +955,50 @@ def process_dataset(
             best is not None
         )
 
-        # ----------------------------------------------------
-        # GT projection for evaluation
-        # ----------------------------------------------------
-
-        gt_projection = (
-            project_stop_sign_center(
-                row
-            )
+        gt_box = gt_box_from_row(
+            row
         )
 
-        if gt_projection is None:
+        gt_available = (
+            gt_box is not None
+        )
 
-            gt_x = np.nan
-            gt_y = np.nan
+        if (
+            raw_detected
+            and gt_available
+        ):
+
+            iou_value = box_iou(
+                candidate_box(
+                    best
+                ),
+                gt_box,
+            )
 
         else:
 
-            gt_x = float(
-                gt_projection[0]
-            )
+            iou_value = np.nan
 
-            gt_y = float(
-                gt_projection[1]
+        correct_detection = bool(
+            raw_detected
+            and gt_available
+            and np.isfinite(
+                iou_value
             )
-
-        # ----------------------------------------------------
-        # Correctness
-        # ----------------------------------------------------
-
-        correct_detection = (
-            candidate_matches_gt(
-                best,
-                gt_projection,
-            )
+            and iou_value
+            >= IOU_THRESHOLD
         )
 
-        false_positive = (
+        false_positive = bool(
             raw_detected
+            and gt_available
             and not correct_detection
         )
 
-        # ----------------------------------------------------
-        # Candidate information
-        # ----------------------------------------------------
+        failure = bool(
+            gt_available
+            and not correct_detection
+        )
 
         if best is not None:
 
@@ -1156,15 +1008,8 @@ def process_dataset(
             bbox_h = best["h"]
 
             area = best["area"]
-
-            vertices = (
-                best["vertices"]
-            )
-
-            red_ratio = (
-                best["red_ratio"]
-            )
-
+            vertices = best["vertices"]
+            red_ratio = best["red_ratio"]
             score = best["score"]
 
         else:
@@ -1178,6 +1023,22 @@ def process_dataset(
             vertices = np.nan
             red_ratio = np.nan
             score = np.nan
+
+        if gt_box is None:
+
+            gt_x1 = np.nan
+            gt_y1 = np.nan
+            gt_x2 = np.nan
+            gt_y2 = np.nan
+
+        else:
+
+            (
+                gt_x1,
+                gt_y1,
+                gt_x2,
+                gt_y2,
+            ) = gt_box
 
         rows.append({
             "sample_id":
@@ -1197,11 +1058,27 @@ def process_dataset(
             "distance_to_sign_m":
                 distance_to_sign,
 
-            "gt_sign_x":
-                gt_x,
+            "sign_in_view":
+                int(
+                    row["sign_in_view"]
+                ),
 
-            "gt_sign_y":
-                gt_y,
+            "gt_available":
+                int(
+                    gt_available
+                ),
+
+            "gt_bbox_x1":
+                gt_x1,
+
+            "gt_bbox_y1":
+                gt_y1,
+
+            "gt_bbox_x2":
+                gt_x2,
+
+            "gt_bbox_y2":
+                gt_y2,
 
             "raw_detected":
                 int(
@@ -1217,6 +1094,17 @@ def process_dataset(
                 int(
                     false_positive
                 ),
+
+            "failure":
+                int(
+                    failure
+                ),
+
+            "iou":
+                iou_value,
+
+            "iou_threshold":
+                IOU_THRESHOLD,
 
             "num_candidates":
                 len(candidates),
@@ -1261,8 +1149,11 @@ def process_dataset(
             "best":
                 best,
 
-            "gt_projection":
-                gt_projection,
+            "gt_box":
+                gt_box,
+
+            "iou":
+                iou_value,
 
             "correct_detection":
                 correct_detection,
@@ -1274,23 +1165,31 @@ def process_dataset(
                 route_s,
         }
 
-    # ========================================================
-    # DATAFRAME
-    # ========================================================
-
     result_df = pd.DataFrame(
         rows
     )
 
+    # The STOP encounter is the approach phase.
+    # Only frames with a valid visual GT box are evaluable.
     approach = result_df[
-        result_df[
-            "route_s_m"
-        ] <= 0.0
+        (
+            result_df[
+                "route_s_m"
+            ] <= 0.0
+        )
+        & (
+            result_df[
+                "gt_available"
+            ] == 1
+        )
     ].copy()
 
-    # ========================================================
-    # FIRST RAW DETECTION
-    # ========================================================
+    if len(approach) == 0:
+
+        raise RuntimeError(
+            "No evaluable approach frames with STOP-sign "
+            "bounding-box ground truth."
+        )
 
     raw_detections = (
         approach[
@@ -1316,10 +1215,6 @@ def process_dataset(
     else:
 
         first_raw_sample = None
-
-    # ========================================================
-    # FIRST CORRECT DETECTION
-    # ========================================================
 
     correct_detections = (
         approach[
@@ -1363,12 +1258,9 @@ def process_dataset(
         first_correct_sample = None
         first_correct_route = None
 
-        # Defined failure convention.
+        # Project definition:
+        # no correct detection => D(s) = 0 m
         first_correct_distance = 0.0
-
-    # ========================================================
-    # DEBUG FRAMES
-    # ========================================================
 
     debug_samples = {
         1,
@@ -1421,6 +1313,29 @@ def process_dataset(
                     sid
                 )
 
+    false_positives = (
+        approach[
+            approach[
+                "false_positive"
+            ] == 1
+        ]
+        .sort_values(
+            "sample_id"
+        )
+    )
+
+    if len(
+        false_positives
+    ) > 0:
+
+        debug_samples.add(
+            int(
+                false_positives.iloc[0][
+                    "sample_id"
+                ]
+            )
+        )
+
     for sample_id in sorted(
         debug_samples
     ):
@@ -1443,16 +1358,13 @@ def process_dataset(
             info["mask"],
             info["candidates"],
             info["best"],
-            info["gt_projection"],
+            info["gt_box"],
+            info["iou"],
             info["correct_detection"],
             debug_path,
             info["distance_to_sign"],
             info["route_s"],
         )
-
-    # ========================================================
-    # SAVE PER-FRAME RESULTS
-    # ========================================================
 
     os.makedirs(
         OUTPUT_ROOT,
@@ -1469,9 +1381,9 @@ def process_dataset(
         index=False,
     )
 
-    # ========================================================
-    # SUMMARY
-    # ========================================================
+    num_approach = len(
+        approach
+    )
 
     raw_count = int(
         approach[
@@ -1491,9 +1403,12 @@ def process_dataset(
         ].sum()
     )
 
-    num_approach = len(
-        approach
-    )
+    iou_on_raw = approach.loc[
+        approach[
+            "raw_detected"
+        ] == 1,
+        "iou",
+    ].dropna()
 
     summary = {
         "dataset":
@@ -1504,7 +1419,10 @@ def process_dataset(
                 "severity"
             ],
 
-        "approach_frames":
+        "iou_threshold":
+            IOU_THRESHOLD,
+
+        "evaluable_approach_frames":
             num_approach,
 
         "raw_detection_count":
@@ -1528,6 +1446,30 @@ def process_dataset(
         "false_positive_count":
             false_positive_count,
 
+        "false_positive_rate":
+            (
+                false_positive_count
+                / num_approach
+            ),
+
+        "mean_iou_when_raw_detected":
+            (
+                float(
+                    iou_on_raw.mean()
+                )
+                if len(iou_on_raw) > 0
+                else np.nan
+            ),
+
+        "median_iou_when_raw_detected":
+            (
+                float(
+                    iou_on_raw.median()
+                )
+                if len(iou_on_raw) > 0
+                else np.nan
+            ),
+
         "first_correct_detection_sample":
             first_correct_sample,
 
@@ -1547,10 +1489,7 @@ def process_dataset(
 
 def main():
 
-    os.makedirs(
-        OUTPUT_ROOT,
-        exist_ok=True,
-    )
+    reset_output_directory()
 
     summaries = []
 
@@ -1560,18 +1499,15 @@ def main():
     ) in DATASETS.items():
 
         print()
-
         print(
-            "=" * 60
+            "=" * 70
         )
-
         print(
             "Processing:",
             dataset_name,
         )
-
         print(
-            "=" * 60
+            "=" * 70
         )
 
         summary = process_dataset(
@@ -1584,9 +1520,9 @@ def main():
         )
 
         print(
-            "Approach frames:",
+            "Evaluable approach frames:",
             summary[
-                "approach_frames"
+                "evaluable_approach_frames"
             ],
         )
 
@@ -1603,7 +1539,7 @@ def main():
         )
 
         print(
-            "Correct detections:",
+            "Correct IoU detections:",
             summary[
                 "correct_detection_count"
             ],
@@ -1619,6 +1555,11 @@ def main():
             summary[
                 "false_positive_count"
             ],
+        )
+
+        print(
+            "Mean IoU on raw detections:",
+            f'{summary["mean_iou_when_raw_detected"]:.4f}',
         )
 
         print(
@@ -1640,10 +1581,6 @@ def main():
             f'{summary["first_correct_detection_distance_m"]:.2f} m',
         )
 
-    # ========================================================
-    # SUMMARY CSV
-    # ========================================================
-
     summary_df = pd.DataFrame(
         summaries
     )
@@ -1659,41 +1596,35 @@ def main():
     )
 
     print()
-
     print(
-        "=" * 60
+        "=" * 70
     )
-
     print(
-        "HSV STOP-SIGN EVALUATION COMPLETE"
+        "HSV IoU VALIDATION COMPLETE"
     )
-
+    print(
+        "Correct detection rule: IoU >= 0.50"
+    )
     print(
         "Summary:",
         summary_path,
     )
-
     print(
         "Debug images:",
         DEBUG_ROOT,
     )
-
     print()
-
     print(
-        "Green box = correct STOP detection"
+        "Magenta box = CARLA visual STOP-sign GT"
     )
-
     print(
-        "Red box   = false positive"
+        "Green box   = correct detector output"
     )
-
     print(
-        "Magenta dot = projected CARLA STOP center"
+        "Red box     = false positive"
     )
-
     print(
-        "=" * 60
+        "=" * 70
     )
 
 

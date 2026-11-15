@@ -1,4 +1,7 @@
-import os
+#!/usr/bin/env python3
+
+from pathlib import Path
+import shutil
 
 import cv2
 import numpy as np
@@ -7,154 +10,150 @@ import matplotlib.pyplot as plt
 
 
 # ============================================================
-# CONFIGURATION
+# CONFIG
 # ============================================================
 
-DATASETS = {
-    "clear": {
-        "root": "data/recordings/stop3_clear_0",
-        "severity": 0,
-    },
+ROOT = Path(__file__).resolve().parents[1]
+RECORDINGS = ROOT / "data" / "recordings"
 
-    "fog45": {
-        "root": "data/recordings/stop3_fog_45",
-        "severity": 45,
-    },
+OUT = ROOT / "results" / "final" / "fourier_monitor"
 
-    "fog90": {
-        "root": "data/recordings/stop3_fog_90",
-        "severity": 90,
-    },
-}
+SEVERITIES = [0, 15, 30, 45, 60, 75, 90]
+TRIALS = [1, 2, 3, 4, 5]
 
-
-OUTPUT_ROOT = "results/spectrum"
-
-REFERENCE_PROFILE_PATH = os.path.join(
-    OUTPUT_ROOT,
-    "clear_reference_profile.csv",
-)
-
-SUMMARY_PATH = os.path.join(
-    OUTPUT_ROOT,
-    "summary.csv",
-)
-
-DISTANCE_PLOT_PATH = os.path.join(
-    OUTPUT_ROOT,
-    "spectral_distance_vs_severity.png",
-)
-
-PROFILE_PLOT_PATH = os.path.join(
-    OUTPUT_ROOT,
-    "mean_radial_spectra.png",
-)
+DRIFT_NAME = "drift_0p75"
 
 
 # ============================================================
-# FOURIER SPECTRUM
+# FIND RECORDINGS
 # ============================================================
 
-def normalized_radial_power_spectrum(image):
+def get_recording_dir(severity, trial):
     """
-    Compute a normalized radially averaged Fourier
-    power spectrum.
+    Use the five drift recordings already collected.
 
-    Pipeline:
+    Expected:
+      stop3_clear_0_drift_0p75_trial_1
+      stop3_fog_15_drift_0p75_trial_1
+      ...
+    """
 
-        BGR
+    weather = "clear" if severity == 0 else "fog"
+
+    exact = (
+        RECORDINGS
+        / f"stop3_{weather}_{severity}_{DRIFT_NAME}_trial_{trial}"
+    )
+
+    if exact.is_dir():
+        return exact
+
+    # Conservative fallback:
+    # only accept it if exactly ONE directory matches.
+    candidates = sorted(
+        p for p in RECORDINGS.glob(
+            f"stop3_{weather}_{severity}*trial_{trial}"
+        )
+        if p.is_dir()
+    )
+
+    if len(candidates) == 1:
+        return candidates[0]
+
+    print("\nCould not uniquely identify recording.")
+    print(f"severity={severity}, trial={trial}")
+    print("Expected:")
+    print(exact)
+
+    print("\nCandidates:")
+    for p in candidates:
+        print(" ", p)
+
+    raise RuntimeError(
+        "Recording directory missing or ambiguous. "
+        "Do not guess the recording."
+    )
+
+
+# ============================================================
+# FOURIER PROFILE
+# ============================================================
+
+def radial_fourier_profile(image):
+    """
+    Frozen Fourier definition:
+
+      BGR
         -> grayscale
         -> FFT2
         -> fftshift
         -> |F|^2
         -> log(1 + power)
+        -> keep largest complete frequency circle
+        -> normalize valid 2-D log-power to unit total
         -> radial average
-        -> normalize profile to sum = 1
 
-    The output describes how image energy is distributed
-    across spatial frequencies while reducing dependence
-    on orientation.
+    IMPORTANT:
+    No second normalization after radial averaging.
     """
 
     gray = cv2.cvtColor(
         image,
         cv2.COLOR_BGR2GRAY,
-    )
+    ).astype(np.float64)
 
-    gray = gray.astype(
+    # 2-D Fourier transform
+    spectrum = np.fft.fft2(gray)
+
+    # Put DC / low frequencies in center
+    spectrum = np.fft.fftshift(spectrum)
+
+    # Power
+    power = np.abs(spectrum) ** 2
+
+    # Compress huge dynamic range
+    log_power = np.log1p(power)
+
+    h, w = gray.shape
+
+    cy = h // 2
+    cx = w // 2
+
+    y, x = np.indices((h, w))
+
+    radius = np.sqrt(
+        (x - cx) ** 2
+        + (y - cy) ** 2
+    ).astype(np.int32)
+
+    # Largest complete circle inside image
+    max_radius = min(cx, cy)
+
+    valid = radius < max_radius
+
+    radius_valid = radius[valid].ravel()
+
+    power_valid = log_power[valid].astype(
         np.float64
     )
 
     # --------------------------------------------------------
-    # 2-D Fourier transform
+    # FROZEN ORDER:
+    # normalize BEFORE radial averaging
     # --------------------------------------------------------
 
-    spectrum = np.fft.fft2(
-        gray
-    )
+    total = power_valid.sum()
 
-    spectrum = np.fft.fftshift(
-        spectrum
-    )
+    if not np.isfinite(total) or total <= 0:
+        raise RuntimeError(
+            "Invalid Fourier power total."
+        )
 
-    # --------------------------------------------------------
-    # Power spectrum
-    # --------------------------------------------------------
+    power_valid = power_valid / total
 
-    power = np.abs(
-        spectrum
-    ) ** 2
+    power_valid = power_valid.ravel()
 
-    # Dynamic range of Fourier power is enormous.
-    # log1p keeps weak and strong frequencies measurable.
-    log_power = np.log1p(
-        power
-    )
-
-    height, width = (
-        gray.shape
-    )
-
-    center_y = height // 2
-    center_x = width // 2
-
-    y, x = np.indices(
-        (height, width)
-    )
-
-    radius = np.sqrt(
-        (x - center_x) ** 2
-        +
-        (y - center_y) ** 2
-    )
-
-    radius = radius.astype(
-        np.int32
-    )
-
-    # Use frequencies only up to the largest complete
-    # circle that fits inside the image.
-    max_radius = min(
-        center_x,
-        center_y,
-    )
-
-    valid = (
-        radius < max_radius
-    )
-
-    radius_valid = radius[
-        valid
-    ].ravel()
-
-    power_valid = log_power[
-        valid
-    ].ravel()
-
-    # --------------------------------------------------------
     # Radial average
-    # --------------------------------------------------------
-
     radial_sum = np.bincount(
         radius_valid,
         weights=power_valid,
@@ -166,398 +165,714 @@ def normalized_radial_power_spectrum(image):
         minlength=max_radius,
     )
 
-    radial_profile = radial_sum / np.maximum(
-        radial_count,
-        1,
+    radial_profile = (
+        radial_sum
+        / np.maximum(radial_count, 1)
     )
 
     radial_profile = radial_profile[
         :max_radius
     ]
 
-    # --------------------------------------------------------
-    # Normalize
-    # --------------------------------------------------------
-
-    total = radial_profile.sum()
-
-    if total <= 0:
+    if not np.all(
+        np.isfinite(radial_profile)
+    ):
         raise RuntimeError(
-            "Invalid Fourier radial spectrum."
+            "Non-finite radial Fourier profile."
         )
-
-    radial_profile = (
-        radial_profile / total
-    )
 
     return radial_profile
 
 
 # ============================================================
-# SPECTRAL DISTANCE
+# DISTANCE
 # ============================================================
 
-def spectral_distance(
-    profile,
-    reference,
-):
+def spectral_distance_l1(profile, reference):
     """
-    Euclidean distance between two normalized radial
-    power spectra.
+    Frozen metric: L1 distance.
     """
 
-    if len(profile) != len(reference):
+    if profile.shape != reference.shape:
         raise RuntimeError(
-            "Spectrum length mismatch."
+            "Spectrum shape mismatch: "
+            f"{profile.shape} vs {reference.shape}"
         )
 
     return float(
-        np.linalg.norm(
-            profile - reference
+        np.sum(
+            np.abs(
+                profile - reference
+            )
         )
     )
 
 
 # ============================================================
-# LOAD DATASET SPECTRA
+# LOAD ONE RECORDING
 # ============================================================
 
-def load_dataset_profiles(
-    dataset_name,
-    dataset_info,
+def load_recording(
+    recording_dir,
+    severity,
+    trial,
 ):
-    """
-    Compute one normalized Fourier profile for every frame.
-    """
-
-    root = dataset_info[
-        "root"
-    ]
-
-    metadata_path = os.path.join(
-        root,
-        "frames.csv",
+    metadata_path = (
+        recording_dir / "frames.csv"
     )
 
-    frame_dir = os.path.join(
-        root,
-        "frames",
+    frame_dir = (
+        recording_dir / "frames"
     )
 
-    if not os.path.exists(
-        metadata_path
-    ):
+    if not metadata_path.is_file():
         raise RuntimeError(
             f"Missing metadata: {metadata_path}"
+        )
+
+    if not frame_dir.is_dir():
+        raise RuntimeError(
+            f"Missing frame directory: {frame_dir}"
         )
 
     metadata = pd.read_csv(
         metadata_path
     )
 
-    profiles = []
-    rows = []
+    if "sample_id" not in metadata.columns:
+        raise RuntimeError(
+            f"No sample_id in {metadata_path}"
+        )
+
+    if metadata["sample_id"].duplicated().any():
+        raise RuntimeError(
+            f"Duplicate sample IDs in {metadata_path}"
+        )
+
+    profiles = {}
+    rows = {}
 
     print(
-        f"Computing spectra for {dataset_name}..."
+        f"\nLoading severity={severity:2d}, "
+        f"trial={trial}:"
+    )
+    print(
+        f"  {recording_dir.name}"
     )
 
-    for index, row in metadata.iterrows():
+    n = len(metadata)
+
+    for i, row in metadata.iterrows():
 
         sample_id = int(
             row["sample_id"]
         )
 
-        image_path = os.path.join(
-            frame_dir,
-            f"{sample_id:04d}.png",
+        image_path = (
+            frame_dir
+            / f"{sample_id:04d}.png"
         )
 
         image = cv2.imread(
-            image_path
+            str(image_path)
         )
 
         if image is None:
             raise RuntimeError(
-                f"Could not read image: {image_path}"
+                f"Could not read: {image_path}"
             )
 
-        profile = (
-            normalized_radial_power_spectrum(
-                image
-            )
+        profile = radial_fourier_profile(
+            image
         )
 
-        profiles.append(
-            profile
-        )
+        profiles[sample_id] = profile
 
-        rows.append({
-            "sample_id":
-                sample_id,
-
-            "weather":
-                row["weather"],
-
-            "severity":
-                int(row["severity"]),
-
-            "route_s_m":
-                float(row["route_s_m"]),
-
-            "distance_to_sign_m":
-                float(
-                    row["distance_to_sign_m"]
-                ),
-
-            "is_junction":
-                int(row["is_junction"]),
-        })
+        rows[sample_id] = row.to_dict()
 
         if (
-            index == 0
-            or (index + 1) % 20 == 0
-            or index + 1 == len(metadata)
+            i == 0
+            or (i + 1) % 25 == 0
+            or i + 1 == n
         ):
             print(
-                f"  {index + 1}/{len(metadata)}"
+                f"    {i + 1}/{n}"
             )
 
-    profiles = np.stack(
-        profiles,
-        axis=0,
-    )
-
-    rows_df = pd.DataFrame(
-        rows
-    )
-
-    return (
-        rows_df,
-        profiles,
-    )
+    return {
+        "dir": recording_dir,
+        "metadata": metadata,
+        "profiles": profiles,
+        "rows": rows,
+    }
 
 
 # ============================================================
-# CLEAR REFERENCE
+# MAIN
 # ============================================================
 
-def build_clear_reference(
-    clear_profiles,
-):
-    """
-    Reference spectrum = mean normalized radial spectrum
-    across all clear-weather frames.
+def main():
 
-    Clear spectral distances provide normal scene variation.
-
-    Threshold:
-
-        T = μ0 + 3σ0
-    """
-
-    reference = np.mean(
-        clear_profiles,
-        axis=0,
+    OUT.mkdir(
+        parents=True,
+        exist_ok=True,
     )
 
-    # Re-normalize after averaging.
-    reference = (
-        reference
-        / reference.sum()
+    # --------------------------------------------------------
+    # 1. Resolve all 35 recordings
+    # --------------------------------------------------------
+
+    recording_dirs = {}
+
+    selected_rows = []
+
+    print("=" * 90)
+    print("FOURIER MONITOR — FROZEN ANALYSIS")
+    print("=" * 90)
+
+    for severity in SEVERITIES:
+        for trial in TRIALS:
+
+            d = get_recording_dir(
+                severity,
+                trial,
+            )
+
+            recording_dirs[
+                (severity, trial)
+            ] = d
+
+            selected_rows.append({
+                "severity": severity,
+                "trial": trial,
+                "recording_dir": str(d),
+            })
+
+    selected_df = pd.DataFrame(
+        selected_rows
     )
 
-    clear_distances = np.array([
-        spectral_distance(
-            profile,
-            reference,
+    selected_df.to_csv(
+        OUT / "selected_recordings.csv",
+        index=False,
+    )
+
+    print("\nSELECTED RECORDINGS")
+    print(selected_df.to_string(index=False))
+
+    # --------------------------------------------------------
+    # 2. Compute Fourier profiles for all recordings
+    # --------------------------------------------------------
+
+    data = {}
+
+    for severity in SEVERITIES:
+        for trial in TRIALS:
+
+            data[
+                (severity, trial)
+            ] = load_recording(
+                recording_dirs[
+                    (severity, trial)
+                ],
+                severity,
+                trial,
+            )
+
+    # --------------------------------------------------------
+    # 3. Frozen common-position intersection
+    #
+    # Exact same sample positions must exist in:
+    #   7 severities x 5 trials
+    # --------------------------------------------------------
+
+    sample_sets = []
+
+    for severity in SEVERITIES:
+        for trial in TRIALS:
+
+            ids = set(
+                data[
+                    (severity, trial)
+                ]["profiles"].keys()
+            )
+
+            sample_sets.append(ids)
+
+    common_ids = sorted(
+        set.intersection(
+            *sample_sets
         )
-        for profile
-        in clear_profiles
-    ])
+    )
+
+    if len(common_ids) == 0:
+        raise RuntimeError(
+            "No common sample IDs across all "
+            "severities and trials."
+        )
+
+    pd.DataFrame({
+        "sample_id": common_ids
+    }).to_csv(
+        OUT / "common_sample_ids.csv",
+        index=False,
+    )
+
+    print("\n" + "=" * 90)
+    print("COMMON MATCHED ROUTE POSITIONS")
+    print("=" * 90)
+
+    print(
+        f"Common positions: {len(common_ids)}"
+    )
+
+    print(
+        f"sample_id range: "
+        f"{common_ids[0]} -> "
+        f"{common_ids[-1]}"
+    )
+
+    # --------------------------------------------------------
+    # 4. Verify spectrum lengths
+    # --------------------------------------------------------
+
+    lengths = set()
+
+    for severity in SEVERITIES:
+        for trial in TRIALS:
+            for sample_id in common_ids:
+
+                lengths.add(
+                    len(
+                        data[
+                            (severity, trial)
+                        ]["profiles"][
+                            sample_id
+                        ]
+                    )
+                )
+
+    if len(lengths) != 1:
+        raise RuntimeError(
+            "Fourier profile lengths differ: "
+            f"{sorted(lengths)}"
+        )
+
+    print(
+        f"Radial bins: {next(iter(lengths))}"
+    )
+
+    # --------------------------------------------------------
+    # 5. Build POSITION-SPECIFIC leave-one-out
+    #    CLEAR references
+    #
+    # For trial j and position p:
+    #
+    # ref(j,p) =
+    #   mean clear profile at position p
+    #   from the OTHER four trials
+    #
+    # Never include trial j in its own reference.
+    # --------------------------------------------------------
+
+    loo_reference = {}
+
+    for trial in TRIALS:
+
+        other_trials = [
+            t for t in TRIALS
+            if t != trial
+        ]
+
+        assert trial not in other_trials
+        assert len(other_trials) == 4
+
+        for sample_id in common_ids:
+
+            stack = np.stack([
+                data[
+                    (0, other_trial)
+                ]["profiles"][
+                    sample_id
+                ]
+                for other_trial
+                in other_trials
+            ])
+
+            reference = np.mean(
+                stack,
+                axis=0,
+            )
+
+            loo_reference[
+                (trial, sample_id)
+            ] = reference
+
+    print("\nLeave-one-out reference audit:")
+    for trial in TRIALS:
+        others = [
+            t for t in TRIALS
+            if t != trial
+        ]
+        print(
+            f"  trial {trial} "
+            f"<- clear trials {others}"
+        )
+
+    # --------------------------------------------------------
+    # 6. Position-level spectral distances
+    # --------------------------------------------------------
+
+    position_rows = []
+
+    for severity in SEVERITIES:
+        for trial in TRIALS:
+
+            for sample_id in common_ids:
+
+                profile = data[
+                    (severity, trial)
+                ]["profiles"][
+                    sample_id
+                ]
+
+                reference = loo_reference[
+                    (trial, sample_id)
+                ]
+
+                distance = (
+                    spectral_distance_l1(
+                        profile,
+                        reference,
+                    )
+                )
+
+                meta = data[
+                    (severity, trial)
+                ]["rows"][
+                    sample_id
+                ]
+
+                position_rows.append({
+                    "severity":
+                        severity,
+
+                    "trial":
+                        trial,
+
+                    "sample_id":
+                        sample_id,
+
+                    "route_s_m":
+                        meta.get(
+                            "route_s_m",
+                            np.nan,
+                        ),
+
+                    "distance_to_sign_m":
+                        meta.get(
+                            "distance_to_sign_m",
+                            np.nan,
+                        ),
+
+                    "is_junction":
+                        meta.get(
+                            "is_junction",
+                            np.nan,
+                        ),
+
+                    "spectral_distance_l1":
+                        distance,
+                })
+
+    position_df = pd.DataFrame(
+        position_rows
+    )
+
+    position_df.to_csv(
+        OUT / "position_distances.csv",
+        index=False,
+    )
+
+    # --------------------------------------------------------
+    # 7. AGGREGATE POSITION FIRST
+    #
+    # One D(severity, trial) per trial.
+    # --------------------------------------------------------
+
+    trial_df = (
+        position_df
+        .groupby(
+            ["severity", "trial"],
+            as_index=False,
+        )
+        .agg(
+            spectral_distance=(
+                "spectral_distance_l1",
+                "mean",
+            ),
+            position_std=(
+                "spectral_distance_l1",
+                lambda x:
+                    float(
+                        np.std(
+                            x,
+                            ddof=1,
+                        )
+                    )
+                    if len(x) > 1
+                    else 0.0,
+            ),
+            positions_n=(
+                "sample_id",
+                "nunique",
+            ),
+        )
+        .sort_values(
+            ["severity", "trial"]
+        )
+        .reset_index(drop=True)
+    )
+
+    # --------------------------------------------------------
+    # 8. CLEAR threshold
+    #
+    # IMPORTANT:
+    # mu0 and sigma0 are calculated across the FIVE
+    # position-aggregated CLEAR trial values.
+    #
+    # NOT pooled clear frames.
+    # --------------------------------------------------------
+
+    clear_trial = (
+        trial_df[
+            trial_df["severity"] == 0
+        ]
+        .sort_values("trial")
+        .copy()
+    )
+
+    if len(clear_trial) != 5:
+        raise RuntimeError(
+            "Expected exactly 5 clear trial "
+            f"aggregates, got {len(clear_trial)}"
+        )
+
+    clear_values = (
+        clear_trial[
+            "spectral_distance"
+        ]
+        .to_numpy(
+            dtype=float
+        )
+    )
 
     mu0 = float(
         np.mean(
-            clear_distances
+            clear_values
         )
     )
 
     sigma0 = float(
         np.std(
-            clear_distances,
+            clear_values,
             ddof=1,
         )
     )
 
-    threshold = (
+    threshold = float(
         mu0
         + 3.0 * sigma0
     )
 
-    return (
-        reference,
-        clear_distances,
-        mu0,
-        sigma0,
-        threshold,
-    )
+    trial_df["threshold"] = threshold
 
+    trial_df[
+        "degradation_alert"
+    ] = (
+        trial_df[
+            "spectral_distance"
+        ]
+        > threshold
+    ).astype(int)
 
-# ============================================================
-# SAVE REFERENCE
-# ============================================================
-
-def save_reference_profile(
-    reference,
-):
-
-    df = pd.DataFrame({
-        "radius_bin":
-            np.arange(
-                len(reference)
-            ),
-
-        "normalized_power":
-            reference,
-    })
-
-    df.to_csv(
-        REFERENCE_PROFILE_PATH,
+    trial_df.to_csv(
+        OUT / "trial_distances.csv",
         index=False,
     )
 
+    threshold_df = pd.DataFrame([{
+        "clear_trials_n": 5,
+        "positions_per_trial":
+            len(common_ids),
+        "mu0":
+            mu0,
+        "sigma0":
+            sigma0,
+        "threshold_mu0_plus_3sigma0":
+            threshold,
+    }])
 
-# ============================================================
-# PROCESS ONE CONDITION
-# ============================================================
-
-def evaluate_condition(
-    name,
-    metadata,
-    profiles,
-    reference,
-    threshold,
-):
-    """
-    Compute spectral distance and alert for all samples.
-    """
-
-    distances = np.array([
-        spectral_distance(
-            profile,
-            reference,
-        )
-        for profile
-        in profiles
-    ])
-
-    alerts = (
-        distances > threshold
+    threshold_df.to_csv(
+        OUT / "threshold.csv",
+        index=False,
     )
 
-    result = metadata.copy()
+    # --------------------------------------------------------
+    # 9. Severity summary across five trials
+    # --------------------------------------------------------
 
-    result[
-        "spectral_distance"
-    ] = distances
+    severity_df = (
+        trial_df
+        .groupby(
+            "severity",
+            as_index=False,
+        )
+        .agg(
+            mean_spectral_distance=(
+                "spectral_distance",
+                "mean",
+            ),
+            std_spectral_distance=(
+                "spectral_distance",
+                lambda x:
+                    float(
+                        np.std(
+                            x,
+                            ddof=1,
+                        )
+                    ),
+            ),
+            min_spectral_distance=(
+                "spectral_distance",
+                "min",
+            ),
+            max_spectral_distance=(
+                "spectral_distance",
+                "max",
+            ),
+            alert_trials=(
+                "degradation_alert",
+                "sum",
+            ),
+            trials_n=(
+                "trial",
+                "count",
+            ),
+        )
+        .sort_values(
+            "severity"
+        )
+        .reset_index(drop=True)
+    )
 
-    result[
+    severity_df[
+        "alert_rate_pct"
+    ] = (
+        100.0
+        * severity_df[
+            "alert_trials"
+        ]
+        / severity_df[
+            "trials_n"
+        ]
+    )
+
+    severity_df[
         "threshold"
     ] = threshold
 
-    result[
-        "degradation_alert"
-    ] = alerts.astype(
-        int
-    )
-
-    output_path = os.path.join(
-        OUTPUT_ROOT,
-        f"{name}_per_frame.csv",
-    )
-
-    result.to_csv(
-        output_path,
+    severity_df.to_csv(
+        OUT / "severity_summary.csv",
         index=False,
     )
 
-    summary = {
-        "dataset":
-            name,
+    # --------------------------------------------------------
+    # 10. Important paired Fog30 vs Fog45 comparison
+    # --------------------------------------------------------
 
-        "severity":
-            int(
-                metadata[
-                    "severity"
-                ].iloc[0]
-            ),
-
-        "frames":
-            len(result),
-
-        "mean_spectral_distance":
-            float(
-                distances.mean()
-            ),
-
-        "median_spectral_distance":
-            float(
-                np.median(
-                    distances
-                )
-            ),
-
-        "std_spectral_distance":
-            float(
-                distances.std(
-                    ddof=1
-                )
-            ),
-
-        "alert_count":
-            int(
-                alerts.sum()
-            ),
-
-        "alert_rate":
-            float(
-                alerts.mean()
-            ),
-    }
-
-    return (
-        result,
-        summary,
-        distances,
+    d30 = (
+        trial_df[
+            trial_df["severity"] == 30
+        ][
+            ["trial", "spectral_distance"]
+        ]
+        .rename(
+            columns={
+                "spectral_distance":
+                    "fog30_distance"
+            }
+        )
     )
 
+    d45 = (
+        trial_df[
+            trial_df["severity"] == 45
+        ][
+            ["trial", "spectral_distance"]
+        ]
+        .rename(
+            columns={
+                "spectral_distance":
+                    "fog45_distance"
+            }
+        )
+    )
 
-# ============================================================
-# PLOTS
-# ============================================================
+    paired = d30.merge(
+        d45,
+        on="trial",
+        how="inner",
+        validate="one_to_one",
+    )
 
-def save_distance_plot(
-    summaries,
-    threshold,
-):
-    """
-    Plot mean spectral distance versus fog severity.
-    """
+    paired[
+        "fog45_minus_fog30"
+    ] = (
+        paired["fog45_distance"]
+        - paired["fog30_distance"]
+    )
 
-    df = pd.DataFrame(
-        summaries
-    ).sort_values(
+    paired[
+        "fog45_more_degraded"
+    ] = (
+        paired[
+            "fog45_minus_fog30"
+        ]
+        > 0
+    ).astype(int)
+
+    paired.to_csv(
+        OUT / "fog30_vs_fog45_paired.csv",
+        index=False,
+    )
+
+    # --------------------------------------------------------
+    # 11. Main figure
+    # --------------------------------------------------------
+
+    x = severity_df[
         "severity"
-    )
+    ].to_numpy()
+
+    y = severity_df[
+        "mean_spectral_distance"
+    ].to_numpy()
+
+    yerr = severity_df[
+        "std_spectral_distance"
+    ].to_numpy()
 
     plt.figure(
-        figsize=(7, 5)
+        figsize=(7.5, 5.0)
     )
 
-    plt.plot(
-        df["severity"],
-        df["mean_spectral_distance"],
+    plt.errorbar(
+        x,
+        y,
+        yerr=yerr,
         marker="o",
+        capsize=4,
         linewidth=2,
     )
 
@@ -572,15 +887,15 @@ def save_distance_plot(
     )
 
     plt.ylabel(
-        "Mean spectral distance"
+        "Position-aggregated L1 spectral distance"
     )
 
     plt.title(
-        "Fourier Degradation Score vs Fog Severity"
+        "Fourier Image Degradation vs Fog Severity"
     )
 
     plt.xticks(
-        [0, 45, 90]
+        SEVERITIES
     )
 
     plt.grid(
@@ -592,358 +907,100 @@ def save_distance_plot(
     plt.tight_layout()
 
     plt.savefig(
-        DISTANCE_PLOT_PATH,
+        OUT / "fourier_distance_vs_fog.png",
         dpi=200,
     )
 
     plt.close()
 
+    # --------------------------------------------------------
+    # PRINT FINAL RESULTS
+    # --------------------------------------------------------
 
-def save_profile_plot(
-    mean_profiles,
-):
-    """
-    Plot average normalized radial spectrum
-    for Clear, Fog45, and Fog90.
-    """
+    print("\n" + "=" * 90)
+    print("CLEAR THRESHOLD")
+    print("=" * 90)
 
-    plt.figure(
-        figsize=(8, 5)
+    print(
+        clear_trial[
+            [
+                "trial",
+                "spectral_distance",
+                "positions_n",
+            ]
+        ].to_string(
+            index=False
+        )
     )
+
+    print(
+        f"\nmu0      = {mu0:.10f}"
+    )
+    print(
+        f"sigma0   = {sigma0:.10f}"
+    )
+    print(
+        f"threshold= {threshold:.10f}"
+    )
+
+    print("\n" + "=" * 90)
+    print("FOURIER SUMMARY")
+    print("=" * 90)
+
+    print(
+        severity_df.to_string(
+            index=False
+        )
+    )
+
+    print("\n" + "=" * 90)
+    print("FOG30 VS FOG45 — PAIRED BY TRIAL")
+    print("=" * 90)
+
+    print(
+        paired.to_string(
+            index=False
+        )
+    )
+
+    delta = paired[
+        "fog45_minus_fog30"
+    ].to_numpy(
+        dtype=float
+    )
+
+    print(
+        "\nMean Fog45 - Fog30 = "
+        f"{delta.mean():.10f}"
+    )
+
+    print(
+        "Trials where Fog45 is MORE "
+        "spectrally degraded than Fog30: "
+        f"{int((delta > 0).sum())}/5"
+    )
+
+    print(
+        "Trials where Fog45 is LESS "
+        "spectrally degraded than Fog30: "
+        f"{int((delta < 0).sum())}/5"
+    )
+
+    print("\n" + "=" * 90)
+    print("SAVED")
+    print("=" * 90)
 
     for name in [
-        "clear",
-        "fog45",
-        "fog90",
+        "selected_recordings.csv",
+        "common_sample_ids.csv",
+        "position_distances.csv",
+        "trial_distances.csv",
+        "threshold.csv",
+        "severity_summary.csv",
+        "fog30_vs_fog45_paired.csv",
+        "fourier_distance_vs_fog.png",
     ]:
-
-        profile = mean_profiles[
-            name
-        ]
-
-        plt.plot(
-            np.arange(
-                len(profile)
-            ),
-            profile,
-            label=name,
-        )
-
-    plt.xlabel(
-        "Radial frequency bin"
-    )
-
-    plt.ylabel(
-        "Normalized log power"
-    )
-
-    plt.title(
-        "Mean Radially Averaged Fourier Spectrum"
-    )
-
-    plt.legend()
-
-    plt.grid(
-        alpha=0.3
-    )
-
-    plt.tight_layout()
-
-    plt.savefig(
-        PROFILE_PLOT_PATH,
-        dpi=200,
-    )
-
-    plt.close()
-
-
-# ============================================================
-# MAIN
-# ============================================================
-
-def main():
-
-    os.makedirs(
-        OUTPUT_ROOT,
-        exist_ok=True,
-    )
-
-    # --------------------------------------------------------
-    # Compute spectra for all three conditions
-    # --------------------------------------------------------
-
-    data = {}
-
-    for (
-        name,
-        info,
-    ) in DATASETS.items():
-
-        (
-            metadata,
-            profiles,
-        ) = load_dataset_profiles(
-            name,
-            info,
-        )
-
-        data[name] = {
-            "metadata":
-                metadata,
-
-            "profiles":
-                profiles,
-        }
-
-    # --------------------------------------------------------
-    # Sanity check:
-    # all three conditions must use identical sample IDs.
-    # --------------------------------------------------------
-
-    clear_ids = data[
-        "clear"
-    ][
-        "metadata"
-    ][
-        "sample_id"
-    ].to_numpy()
-
-    for name in [
-        "fog45",
-        "fog90",
-    ]:
-
-        ids = data[
-            name
-        ][
-            "metadata"
-        ][
-            "sample_id"
-        ].to_numpy()
-
-        if not np.array_equal(
-            clear_ids,
-            ids,
-        ):
-
-            raise RuntimeError(
-                f"{name} sample IDs do not "
-                f"match Clear."
-            )
-
-    # --------------------------------------------------------
-    # Build normal Clear spectral reference
-    # --------------------------------------------------------
-
-    (
-        reference,
-        clear_distances,
-        mu0,
-        sigma0,
-        threshold,
-    ) = build_clear_reference(
-        data[
-            "clear"
-        ][
-            "profiles"
-        ]
-    )
-
-    save_reference_profile(
-        reference
-    )
-
-    print()
-    print(
-        "=" * 60
-    )
-
-    print(
-        "CLEAR REFERENCE"
-    )
-
-    print(
-        "=" * 60
-    )
-
-    print(
-        f"mu0:       {mu0:.8f}"
-    )
-
-    print(
-        f"sigma0:    {sigma0:.8f}"
-    )
-
-    print(
-        f"threshold: {threshold:.8f}"
-    )
-
-    # --------------------------------------------------------
-    # Evaluate all conditions
-    # --------------------------------------------------------
-
-    summaries = []
-
-    mean_profiles = {}
-
-    for name in [
-        "clear",
-        "fog45",
-        "fog90",
-    ]:
-
-        metadata = data[
-            name
-        ][
-            "metadata"
-        ]
-
-        profiles = data[
-            name
-        ][
-            "profiles"
-        ]
-
-        (
-            result,
-            summary,
-            distances,
-        ) = evaluate_condition(
-            name,
-            metadata,
-            profiles,
-            reference,
-            threshold,
-        )
-
-        summaries.append(
-            summary
-        )
-
-        mean_profiles[name] = (
-            profiles.mean(
-                axis=0
-            )
-        )
-
-        print()
-        print(
-            "=" * 60
-        )
-
-        print(
-            "Condition:",
-            name,
-        )
-
-        print(
-            "=" * 60
-        )
-
-        print(
-            "Frames:",
-            summary[
-                "frames"
-            ],
-        )
-
-        print(
-            "Mean spectral distance:",
-            f'{summary["mean_spectral_distance"]:.8f}',
-        )
-
-        print(
-            "Median spectral distance:",
-            f'{summary["median_spectral_distance"]:.8f}',
-        )
-
-        print(
-            "Alerts:",
-            summary[
-                "alert_count"
-            ],
-            "/",
-            summary[
-                "frames"
-            ],
-        )
-
-        print(
-            "Alert rate:",
-            f'{summary["alert_rate"] * 100:.2f}%',
-        )
-
-    # --------------------------------------------------------
-    # Save summary
-    # --------------------------------------------------------
-
-    summary_df = pd.DataFrame(
-        summaries
-    )
-
-    # Add clear calibration information to all rows
-    # so it is preserved with the experiment.
-    summary_df[
-        "clear_mu0"
-    ] = mu0
-
-    summary_df[
-        "clear_sigma0"
-    ] = sigma0
-
-    summary_df[
-        "alert_threshold"
-    ] = threshold
-
-    summary_df.to_csv(
-        SUMMARY_PATH,
-        index=False,
-    )
-
-    # --------------------------------------------------------
-    # Save plots
-    # --------------------------------------------------------
-
-    save_distance_plot(
-        summaries,
-        threshold,
-    )
-
-    save_profile_plot(
-        mean_profiles,
-    )
-
-    # --------------------------------------------------------
-    # Finish
-    # --------------------------------------------------------
-
-    print()
-    print(
-        "=" * 60
-    )
-
-    print(
-        "FOURIER MONITOR COMPLETE"
-    )
-
-    print(
-        "Summary:",
-        SUMMARY_PATH,
-    )
-
-    print(
-        "Distance plot:",
-        DISTANCE_PLOT_PATH,
-    )
-
-    print(
-        "Spectrum plot:",
-        PROFILE_PLOT_PATH,
-    )
-
-    print(
-        "=" * 60
-    )
+        print(OUT / name)
 
 
 if __name__ == "__main__":

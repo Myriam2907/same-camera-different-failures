@@ -21,21 +21,40 @@ FAILURE_ERROR_PX = IMAGE_W / 2.0   # 640 px
 
 DATASETS = {
     "clear": {
-        "root": "data/recordings/stop3_clear_0",
+        "root": "data/recordings/stop3_clear_0_drift_0p75",
         "severity": 0,
     },
 
+    "fog15": {
+        "root": "data/recordings/stop3_fog_15_drift_0p75",
+        "severity": 15,
+    },
+
+    "fog30": {
+        "root": "data/recordings/stop3_fog_30_drift_0p75",
+        "severity": 30,
+    },
+
     "fog45": {
-        "root": "data/recordings/stop3_fog_45",
+        "root": "data/recordings/stop3_fog_45_drift_0p75",
         "severity": 45,
     },
 
+    "fog60": {
+        "root": "data/recordings/stop3_fog_60_drift_0p75",
+        "severity": 60,
+    },
+
+    "fog75": {
+        "root": "data/recordings/stop3_fog_75_drift_0p75",
+        "severity": 75,
+    },
+
     "fog90": {
-        "root": "data/recordings/stop3_fog_90",
+        "root": "data/recordings/stop3_fog_90_drift_0p75",
         "severity": 90,
     },
 }
-
 
 OUTPUT_ROOT = "results/lane_hough"
 
@@ -987,11 +1006,11 @@ def process_dataset(
             not is_junction
             and sample_id
             in {
-                1,
-                20,
-                40,
-                60,
-                80,
+                123,
+                127,
+                150,
+                156,
+                157,
             }
         ):
 

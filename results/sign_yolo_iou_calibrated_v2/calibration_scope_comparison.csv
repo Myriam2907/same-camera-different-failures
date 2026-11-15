@@ -1,0 +1,3 @@
+model,calibration_scope,frames_used,threshold,clear_precision_pct,clear_recall_pct,clear_f1,threshold_difference
+yolo26s,all_frames,120,0.012,98.91304347826086,75.83333333333333,0.8584905660377358,0.029
+yolo26s,within40m,68,0.041,100.0,100.0,1.0,0.029

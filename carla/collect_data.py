@@ -76,7 +76,7 @@ TARGET_STOP_HINT = carla.Location(
 
 )
 
-CAPTURE_UPSTREAM_M = 50.0
+CAPTURE_UPSTREAM_M = 80.0
 
 CAPTURE_DOWNSTREAM_M = 10.0
 
@@ -158,6 +158,20 @@ POSE_LOCATION_TOL_M = 0.01
 
 POSE_ANGLE_TOL_DEG = 0.01
 
+
+# ============================================================
+# FROZEN FINAL-TRIAL LATERAL PHASES
+# ============================================================
+
+TRIAL_PHASE_DEG = {
+    1: -8.0,
+    2: -4.0,
+    3: 0.0,
+    4: 4.0,
+    5: 8.0,
+}
+
+
 # ============================================================
 
 # ARGUMENTS
@@ -227,6 +241,20 @@ def parse_args():
         ),
 
     )
+
+
+    parser.add_argument(
+        "--trial",
+        type=int,
+        choices=[1, 2, 3, 4, 5],
+        default=None,
+        help=(
+            "Frozen controlled trajectory configuration. "
+            "1=-8deg, 2=-4deg, 3=0deg, 4=+4deg, 5=+8deg. "
+            "For the final sweep always provide --trial explicitly."
+        ),
+    )
+
 
     return parser.parse_args()
 
@@ -498,13 +526,22 @@ def get_stop_trigger_world_location(
 
     )
 
-def find_visible_sign_center(
+def find_visible_sign_bbox(
 
     world,
 
     stop_actor,
 
 ):
+
+    """
+    Match the selected STOP actor to the visual traffic-sign
+    bounding box returned by CARLA.
+
+    IMPORTANT:
+    this is the VISUAL sign object, not the STOP trigger volume.
+    The returned box is used only for ground-truth evaluation.
+    """
 
     boxes = world.get_level_bbs(
 
@@ -562,7 +599,282 @@ def find_visible_sign_center(
 
         )
 
-    return best_box.location
+    return best_box
+
+
+def get_level_bbox_world_vertices(
+
+    bbox,
+
+):
+
+    """
+    Return the 8 world-space corners of a level bounding box.
+
+    world.get_level_bbs() returns map-object boxes whose
+    location/rotation are already expressed in world space.
+    """
+
+    bbox_transform = carla.Transform(
+
+        bbox.location,
+
+        bbox.rotation,
+
+    )
+
+    vertices = []
+
+    for sx in (-1.0, 1.0):
+
+        for sy in (-1.0, 1.0):
+
+            for sz in (-1.0, 1.0):
+
+                local_vertex = carla.Location(
+
+                    x=sx * bbox.extent.x,
+
+                    y=sy * bbox.extent.y,
+
+                    z=sz * bbox.extent.z,
+
+                )
+
+                world_vertex = (
+
+                    bbox_transform.transform(
+
+                        local_vertex
+
+                    )
+
+                )
+
+                vertices.append(
+
+                    world_vertex
+
+                )
+
+    return vertices
+
+
+def project_sign_bbox_to_image(
+
+    sign_bbox,
+
+    image,
+
+    K,
+
+):
+
+    """
+    Project the visual CARLA STOP-sign 3D bounding box into
+    the RGB image and return:
+
+        (x1, y1, x2, y2)
+
+    in pixel coordinates.
+
+    If the visual sign is not projectable into the image,
+    return None.
+    """
+
+    world_to_camera = np.array(
+
+        image.transform.get_inverse_matrix()
+
+    )
+
+    projected = []
+
+    for world_vertex in (
+
+        get_level_bbox_world_vertices(
+
+            sign_bbox
+
+        )
+
+    ):
+
+        result = world_to_image(
+
+            world_vertex,
+
+            world_to_camera,
+
+            K,
+
+        )
+
+        if result is None:
+
+            continue
+
+        u, v, depth = result
+
+        if not (
+
+            np.isfinite(u)
+
+            and np.isfinite(v)
+
+            and np.isfinite(depth)
+
+        ):
+
+            continue
+
+        if depth <= 0.0:
+
+            continue
+
+        projected.append(
+
+            (float(u), float(v))
+
+        )
+
+    if len(projected) < 4:
+
+        return None
+
+    xs = np.array(
+
+        [point[0] for point in projected],
+
+        dtype=np.float64,
+
+    )
+
+    ys = np.array(
+
+        [point[1] for point in projected],
+
+        dtype=np.float64,
+
+    )
+
+    x1 = float(
+
+        np.min(xs)
+
+    )
+
+    y1 = float(
+
+        np.min(ys)
+
+    )
+
+    x2 = float(
+
+        np.max(xs)
+
+    )
+
+    y2 = float(
+
+        np.max(ys)
+
+    )
+
+    # Completely outside the image.
+    if (
+
+        x2 < 0.0
+
+        or y2 < 0.0
+
+        or x1 >= IMAGE_W
+
+        or y1 >= IMAGE_H
+
+    ):
+
+        return None
+
+    # Clip to visible image bounds.
+    x1 = max(
+
+        0.0,
+
+        min(
+
+            float(IMAGE_W - 1),
+
+            x1,
+
+        ),
+
+    )
+
+    y1 = max(
+
+        0.0,
+
+        min(
+
+            float(IMAGE_H - 1),
+
+            y1,
+
+        ),
+
+    )
+
+    x2 = max(
+
+        0.0,
+
+        min(
+
+            float(IMAGE_W - 1),
+
+            x2,
+
+        ),
+
+    )
+
+    y2 = max(
+
+        0.0,
+
+        min(
+
+            float(IMAGE_H - 1),
+
+            y2,
+
+        ),
+
+    )
+
+    if (
+
+        x2 <= x1
+
+        or y2 <= y1
+
+    ):
+
+        return None
+
+    return (
+
+        x1,
+
+        y1,
+
+        x2,
+
+        y2,
+
+    )
 
 # ============================================================
 
@@ -1235,6 +1547,7 @@ def smooth_lateral_pose(
     total_samples,
 
     amplitude_m,
+    phase_offset_deg=0.0,
 
 ):
 
@@ -1252,6 +1565,7 @@ def smooth_lateral_pose(
     """
 
     amplitude_m = float(amplitude_m)
+    phase_offset_deg = float(phase_offset_deg)
 
     if (
 
@@ -1272,9 +1586,8 @@ def smooth_lateral_pose(
     )
 
     phase = (
-
         2.0 * np.pi * progress
-
+        + np.deg2rad(phase_offset_deg)
     )
 
     lateral_offset_m = (
@@ -1684,6 +1997,17 @@ def main():
 
     lateral_drift_m = float(args.lateral_drift)
 
+    trial_id = args.trial
+
+    if trial_id is None:
+        # Legacy/pilot compatibility only.
+        phase_offset_deg = 0.0
+    else:
+        phase_offset_deg = float(
+            TRIAL_PHASE_DEG[trial_id]
+        )
+
+
     if lateral_drift_m < 0.0:
 
         raise ValueError(
@@ -1691,6 +2015,15 @@ def main():
             "--lateral-drift must be >= 0."
 
         )
+
+    print(
+        "Trajectory trial:",
+        "legacy" if trial_id is None else trial_id,
+    )
+    print(
+        "Lateral phase offset:",
+        f"{phase_offset_deg:+.1f} deg",
+    )
 
     weather = make_weather(
 
@@ -1722,6 +2055,11 @@ def main():
 
             f"stop3_{weather_name}_{severity}"
 
+        )
+
+    if trial_id is not None:
+        experiment_name = (
+            f"{experiment_name}_trial_{trial_id}"
         )
 
     output_root = os.path.join(
@@ -1896,15 +2234,21 @@ def main():
 
         )
 
-        sign_center = (
+        sign_bbox_world = (
 
-            find_visible_sign_center(
+            find_visible_sign_bbox(
 
                 world,
 
                 stop_actor,
 
             )
+
+        )
+
+        sign_center = (
+
+            sign_bbox_world.location
 
         )
 
@@ -1917,6 +2261,18 @@ def main():
             f"{sign_center.y:.2f}, "
 
             f"{sign_center.z:.2f})",
+
+        )
+
+        print(
+
+            "Visible sign bbox extent:",
+
+            f"({sign_bbox_world.extent.x:.3f}, "
+
+            f"{sign_bbox_world.extent.y:.3f}, "
+
+            f"{sign_bbox_world.extent.z:.3f}) m",
 
         )
 
@@ -2126,6 +2482,7 @@ def main():
 
             lateral_drift_m,
 
+            phase_offset_deg,
         )
 
         first_transform = (
@@ -2389,6 +2746,8 @@ def main():
                 "weather",
 
                 "severity",
+                "trial_id",
+                "lateral_phase_deg",
 
                 "route_s_m",
 
@@ -2409,6 +2768,16 @@ def main():
                 "ego_roll",
 
                 "distance_to_sign_m",
+
+                "sign_in_view",
+
+                "sign_bbox_x1",
+
+                "sign_bbox_y1",
+
+                "sign_bbox_x2",
+
+                "sign_bbox_y2",
 
                 "is_junction",
 
@@ -2462,6 +2831,7 @@ def main():
 
                     lateral_drift_m,
 
+                    phase_offset_deg,
                 )
 
                 planned_transform = (
@@ -2624,6 +2994,78 @@ def main():
 
                 # ============================================
 
+                # VISUAL STOP-SIGN GT BOUNDING BOX
+
+                # ============================================
+
+                sign_bbox_2d = (
+
+                    project_sign_bbox_to_image(
+
+                        sign_bbox_world,
+
+                        image,
+
+                        K,
+
+                    )
+
+                )
+
+                if sign_bbox_2d is None:
+
+                    sign_in_view = 0
+
+                    sign_bbox_x1 = ""
+
+                    sign_bbox_y1 = ""
+
+                    sign_bbox_x2 = ""
+
+                    sign_bbox_y2 = ""
+
+                else:
+
+                    sign_in_view = 1
+
+                    (
+
+                        sign_bbox_x1_value,
+
+                        sign_bbox_y1_value,
+
+                        sign_bbox_x2_value,
+
+                        sign_bbox_y2_value,
+
+                    ) = sign_bbox_2d
+
+                    sign_bbox_x1 = (
+
+                        f"{sign_bbox_x1_value:.6f}"
+
+                    )
+
+                    sign_bbox_y1 = (
+
+                        f"{sign_bbox_y1_value:.6f}"
+
+                    )
+
+                    sign_bbox_x2 = (
+
+                        f"{sign_bbox_x2_value:.6f}"
+
+                    )
+
+                    sign_bbox_y2 = (
+
+                        f"{sign_bbox_y2_value:.6f}"
+
+                    )
+
+                # ============================================
+
                 # LANE GT
 
                 # ============================================
@@ -2709,6 +3151,8 @@ def main():
                     weather_name,
 
                     severity,
+                    ("" if trial_id is None else trial_id),
+                    f"{phase_offset_deg:.3f}",
 
                     f'{point["route_s_m"]:.3f}',
 
@@ -2729,6 +3173,16 @@ def main():
                     f"{actual_rotation.roll:.9f}",
 
                     f"{distance_to_sign:.6f}",
+
+                    sign_in_view,
+
+                    sign_bbox_x1,
+
+                    sign_bbox_y1,
+
+                    sign_bbox_x2,
+
+                    sign_bbox_y2,
 
                     int(is_junction),
 
@@ -2769,6 +3223,8 @@ def main():
                         f"| sign_dist="
 
                         f"{distance_to_sign:.2f} m "
+
+                        f"| sign_view={sign_in_view} "
 
                         f"| junction="
 

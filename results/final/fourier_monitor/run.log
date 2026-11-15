@@ -1,0 +1,527 @@
+==========================================================================================
+FOURIER MONITOR — FROZEN ANALYSIS
+==========================================================================================
+
+SELECTED RECORDINGS
+ severity  trial                                                                                 recording_dir
+        0      1 /home/cpsslab/same-camera-different-failures/data/recordings/stop3_clear_0_drift_0p75_trial_1
+        0      2 /home/cpsslab/same-camera-different-failures/data/recordings/stop3_clear_0_drift_0p75_trial_2
+        0      3 /home/cpsslab/same-camera-different-failures/data/recordings/stop3_clear_0_drift_0p75_trial_3
+        0      4 /home/cpsslab/same-camera-different-failures/data/recordings/stop3_clear_0_drift_0p75_trial_4
+        0      5 /home/cpsslab/same-camera-different-failures/data/recordings/stop3_clear_0_drift_0p75_trial_5
+       15      1  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_15_drift_0p75_trial_1
+       15      2  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_15_drift_0p75_trial_2
+       15      3  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_15_drift_0p75_trial_3
+       15      4  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_15_drift_0p75_trial_4
+       15      5  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_15_drift_0p75_trial_5
+       30      1  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_30_drift_0p75_trial_1
+       30      2  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_30_drift_0p75_trial_2
+       30      3  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_30_drift_0p75_trial_3
+       30      4  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_30_drift_0p75_trial_4
+       30      5  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_30_drift_0p75_trial_5
+       45      1  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_45_drift_0p75_trial_1
+       45      2  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_45_drift_0p75_trial_2
+       45      3  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_45_drift_0p75_trial_3
+       45      4  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_45_drift_0p75_trial_4
+       45      5  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_45_drift_0p75_trial_5
+       60      1  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_60_drift_0p75_trial_1
+       60      2  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_60_drift_0p75_trial_2
+       60      3  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_60_drift_0p75_trial_3
+       60      4  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_60_drift_0p75_trial_4
+       60      5  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_60_drift_0p75_trial_5
+       75      1  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_75_drift_0p75_trial_1
+       75      2  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_75_drift_0p75_trial_2
+       75      3  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_75_drift_0p75_trial_3
+       75      4  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_75_drift_0p75_trial_4
+       75      5  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_75_drift_0p75_trial_5
+       90      1  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_90_drift_0p75_trial_1
+       90      2  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_90_drift_0p75_trial_2
+       90      3  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_90_drift_0p75_trial_3
+       90      4  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_90_drift_0p75_trial_4
+       90      5  /home/cpsslab/same-camera-different-failures/data/recordings/stop3_fog_90_drift_0p75_trial_5
+
+Loading severity= 0, trial=1:
+  stop3_clear_0_drift_0p75_trial_1
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity= 0, trial=2:
+  stop3_clear_0_drift_0p75_trial_2
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity= 0, trial=3:
+  stop3_clear_0_drift_0p75_trial_3
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity= 0, trial=4:
+  stop3_clear_0_drift_0p75_trial_4
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity= 0, trial=5:
+  stop3_clear_0_drift_0p75_trial_5
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=15, trial=1:
+  stop3_fog_15_drift_0p75_trial_1
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=15, trial=2:
+  stop3_fog_15_drift_0p75_trial_2
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=15, trial=3:
+  stop3_fog_15_drift_0p75_trial_3
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=15, trial=4:
+  stop3_fog_15_drift_0p75_trial_4
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=15, trial=5:
+  stop3_fog_15_drift_0p75_trial_5
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=30, trial=1:
+  stop3_fog_30_drift_0p75_trial_1
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=30, trial=2:
+  stop3_fog_30_drift_0p75_trial_2
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=30, trial=3:
+  stop3_fog_30_drift_0p75_trial_3
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=30, trial=4:
+  stop3_fog_30_drift_0p75_trial_4
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=30, trial=5:
+  stop3_fog_30_drift_0p75_trial_5
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=45, trial=1:
+  stop3_fog_45_drift_0p75_trial_1
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=45, trial=2:
+  stop3_fog_45_drift_0p75_trial_2
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=45, trial=3:
+  stop3_fog_45_drift_0p75_trial_3
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=45, trial=4:
+  stop3_fog_45_drift_0p75_trial_4
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=45, trial=5:
+  stop3_fog_45_drift_0p75_trial_5
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=60, trial=1:
+  stop3_fog_60_drift_0p75_trial_1
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=60, trial=2:
+  stop3_fog_60_drift_0p75_trial_2
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=60, trial=3:
+  stop3_fog_60_drift_0p75_trial_3
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=60, trial=4:
+  stop3_fog_60_drift_0p75_trial_4
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=60, trial=5:
+  stop3_fog_60_drift_0p75_trial_5
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=75, trial=1:
+  stop3_fog_75_drift_0p75_trial_1
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=75, trial=2:
+  stop3_fog_75_drift_0p75_trial_2
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=75, trial=3:
+  stop3_fog_75_drift_0p75_trial_3
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=75, trial=4:
+  stop3_fog_75_drift_0p75_trial_4
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=75, trial=5:
+  stop3_fog_75_drift_0p75_trial_5
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=90, trial=1:
+  stop3_fog_90_drift_0p75_trial_1
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=90, trial=2:
+  stop3_fog_90_drift_0p75_trial_2
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=90, trial=3:
+  stop3_fog_90_drift_0p75_trial_3
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=90, trial=4:
+  stop3_fog_90_drift_0p75_trial_4
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+Loading severity=90, trial=5:
+  stop3_fog_90_drift_0p75_trial_5
+    1/181
+    25/181
+    50/181
+    75/181
+    100/181
+    125/181
+    150/181
+    175/181
+    181/181
+
+==========================================================================================
+COMMON MATCHED ROUTE POSITIONS
+==========================================================================================
+Common positions: 181
+sample_id range: 1 -> 181
+Radial bins: 360
+
+Leave-one-out reference audit:
+  trial 1 <- clear trials [2, 3, 4, 5]
+  trial 2 <- clear trials [1, 3, 4, 5]
+  trial 3 <- clear trials [1, 2, 4, 5]
+  trial 4 <- clear trials [1, 2, 3, 5]
+  trial 5 <- clear trials [1, 2, 3, 4]
+
+==========================================================================================
+CLEAR THRESHOLD
+==========================================================================================
+ trial  spectral_distance  positions_n
+     1           0.000002          181
+     2           0.000002          181
+     3           0.000002          181
+     4           0.000002          181
+     5           0.000002          181
+
+mu0      = 0.0000021763
+sigma0   = 0.0000002104
+threshold= 0.0000028074
+
+==========================================================================================
+FOURIER SUMMARY
+==========================================================================================
+ severity  mean_spectral_distance  std_spectral_distance  min_spectral_distance  max_spectral_distance  alert_trials  trials_n  alert_rate_pct  threshold
+        0                0.000002           2.103678e-07               0.000002               0.000002             0         5             0.0   0.000003
+       15                0.000009           8.331384e-08               0.000009               0.000009             5         5           100.0   0.000003
+       30                0.000016           6.286251e-08               0.000016               0.000016             5         5           100.0   0.000003
+       45                0.000016           5.605378e-08               0.000016               0.000016             5         5           100.0   0.000003
+       60                0.000018           4.737560e-08               0.000018               0.000018             5         5           100.0   0.000003
+       75                0.000020           3.057916e-08               0.000020               0.000020             5         5           100.0   0.000003
+       90                0.000022           3.465065e-08               0.000022               0.000022             5         5           100.0   0.000003
+
+==========================================================================================
+FOG30 VS FOG45 — PAIRED BY TRIAL
+==========================================================================================
+ trial  fog30_distance  fog45_distance  fog45_minus_fog30  fog45_more_degraded
+     1        0.000016        0.000016       2.885589e-08                    1
+     2        0.000016        0.000016       2.875595e-09                    1
+     3        0.000016        0.000016      -1.137739e-07                    0
+     4        0.000016        0.000016      -3.021009e-08                    0
+     5        0.000016        0.000016      -5.842489e-08                    0
+
+Mean Fog45 - Fog30 = -0.0000000341
+Trials where Fog45 is MORE spectrally degraded than Fog30: 2/5
+Trials where Fog45 is LESS spectrally degraded than Fog30: 3/5
+
+==========================================================================================
+SAVED
+==========================================================================================
+/home/cpsslab/same-camera-different-failures/results/final/fourier_monitor/selected_recordings.csv
+/home/cpsslab/same-camera-different-failures/results/final/fourier_monitor/common_sample_ids.csv
+/home/cpsslab/same-camera-different-failures/results/final/fourier_monitor/position_distances.csv
+/home/cpsslab/same-camera-different-failures/results/final/fourier_monitor/trial_distances.csv
+/home/cpsslab/same-camera-different-failures/results/final/fourier_monitor/threshold.csv
+/home/cpsslab/same-camera-different-failures/results/final/fourier_monitor/severity_summary.csv
+/home/cpsslab/same-camera-different-failures/results/final/fourier_monitor/fog30_vs_fog45_paired.csv
+/home/cpsslab/same-camera-different-failures/results/final/fourier_monitor/fourier_distance_vs_fog.png

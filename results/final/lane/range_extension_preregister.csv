@@ -1,0 +1,6 @@
+label,nominal_target_m,distance_definition,frozen_row_y,min_eligible_frames_per_trial,minimum_required,status,actual_median_camera_range_m,median_m_per_px
+primary_504,,camera_to_lane_3d_euclidean,504,88,50,KEEP,8.912915964029375,0.013551889168928473
+target_25m,25.0,camera_to_lane_3d_euclidean,410,55,50,KEEP,25.053306366872125,0.03900077594650189
+target_30m,30.0,camera_to_lane_3d_euclidean,402,47,50,INSUFFICIENT_COVERAGE,29.79330572973032,0.04643181662345899
+target_35m,35.0,camera_to_lane_3d_euclidean,396,47,50,INSUFFICIENT_COVERAGE,34.72901647517885,0.054169177672662217
+target_40m,40.0,camera_to_lane_3d_euclidean,391,47,50,INSUFFICIENT_COVERAGE,40.31019755026387,0.06290565032578263

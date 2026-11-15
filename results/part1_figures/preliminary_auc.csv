@@ -1,0 +1,3 @@
+detector,conditions,frames,failure_frames,correct_frames,auc
+HSV,fog45+fog90,202,154,48,0.8062770562770563
+Template,fog45+fog90,202,183,19,0.8541846419327006

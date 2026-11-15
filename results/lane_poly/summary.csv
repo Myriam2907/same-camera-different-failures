@@ -1,0 +1,2 @@
+dataset,severity,total_frames,junction_excluded,evaluated_frames,successful_detections,detector_failures,detection_rate_percent,mean_error_penalized_px,median_error_penalized_px,mean_error_success_only_px,median_error_success_only_px
+clear,0,181,72,109,7,102,6.422018348623853,606.2713836399097,640.0,114.79725953573673,116.82654056515048

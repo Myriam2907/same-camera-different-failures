@@ -1,0 +1,49 @@
+Trajectory trial: 4
+Lateral phase offset: +4.0 deg
+Connected to: Carla/Maps/Town10HD_Opt
+Synchronous mode: ON
+STOP actor: 3
+STOP actor location: (26.10, 75.15, 0.15)
+Visible sign center: (26.04, 75.15, 2.31)
+Visible sign bbox extent: (0.401, 0.006, 0.401) m
+Loading frozen route: data/routes/stop3_route.csv
+Frozen route points: 301
+Captured samples: 181
+Capture range: -80.0 m to +10.0 m
+Route spacing: 0.5 m
+Weather: fog
+Severity: 30
+Maximum lateral drift: 0.750 m
+Vehicle spawned
+Physics: OFF (frozen-pose experiment)
+RGB camera attached
+Camera: 1280x720, FOV=90.0
+Lane GT row: 504
+Warming up...
+Warm-up complete
+Saved 1/181 | route_s=-80.0 m | lateral=+0.05 m | sign_dist=67.70 m | sign_view=0 | junction=1 | lane_gt_x=None
+Saved 20/181 | route_s=-70.5 m | lateral=+0.50 m | sign_dist=64.28 m | sign_view=0 | junction=1 | lane_gt_x=None
+Saved 40/181 | route_s=-60.5 m | lateral=+0.74 m | sign_dist=56.79 m | sign_view=1 | junction=1 | lane_gt_x=None
+Saved 60/181 | route_s=-50.5 m | lateral=+0.64 m | sign_dist=47.24 m | sign_view=1 | junction=0 | lane_gt_x=613.8438707608082
+Saved 80/181 | route_s=-40.5 m | lateral=+0.23 m | sign_dist=37.37 m | sign_view=1 | junction=0 | lane_gt_x=660.2496478211876
+Saved 100/181 | route_s=-30.5 m | lateral=-0.28 m | sign_dist=27.60 m | sign_view=1 | junction=0 | lane_gt_x=697.219903147964
+Saved 120/181 | route_s=-20.5 m | lateral=-0.66 m | sign_dist=18.05 m | sign_view=1 | junction=0 | lane_gt_x=707.3718870869953
+Saved 140/181 | route_s=-10.5 m | lateral=-0.73 m | sign_dist=9.28 m | sign_view=1 | junction=0 | lane_gt_x=686.0051319837671
+Saved 160/181 | route_s=-0.5 m | lateral=-0.46 m | sign_dist=6.51 m | sign_view=0 | junction=1 | lane_gt_x=None
+Saved 180/181 | route_s=+9.5 m | lateral=+0.03 m | sign_dist=14.03 m | sign_view=0 | junction=1 | lane_gt_x=None
+Saved 181/181 | route_s=+10.0 m | lateral=+0.05 m | sign_dist=14.49 m | sign_view=0 | junction=1 | lane_gt_x=None
+
+RECORDING COMPLETE
+Experiment: stop3_fog_30_drift_0p75_trial_4
+Maximum lateral drift: 0.750 m
+Frozen route: data/routes/stop3_route.csv
+Frames: data/recordings/stop3_fog_30_drift_0p75_trial_4/frames
+CSV: data/recordings/stop3_fog_30_drift_0p75_trial_4/frames.csv
+Captured samples: 181
+Junction frames (lane GT intentionally blank): 72
+Non-junction missing lane GT: 0
+Max vehicle location pose error: 0.000007864 m
+Max vehicle angle pose error: 0.000055313 deg
+
+Cleaning up...
+CARLA world settings restored

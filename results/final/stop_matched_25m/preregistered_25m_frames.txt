@@ -1,0 +1,35 @@
+POST-HOC STOP-SIGN 25 m RANGE-CONTROL PREREGISTRATION
+
+This is a post-hoc range-control analysis, not an original preregistered metric.
+Frame selection was frozen using physical distance only, before matched-distance detector outcomes were inspected.
+
+Target distance: 25.053306 m
+Frames per controlled configuration: 5
+Rule: choose the five sign-in-view frames with smallest absolute distance from the target, using Clear recording geometry. Reuse the same sample IDs for the paired weather conditions.
+
+ trial  sample_id  route_s_m  distance_to_sign_m  abs_distance_error_m
+     1        107      -27.0           24.193119              0.860187
+     1        106      -27.5           24.673748              0.379558
+     1        105      -28.0           25.155056              0.101750
+     1        104      -28.5           25.637007              0.583701
+     1        103      -29.0           26.119574              1.066268
+     2        107      -27.0           24.203653              0.849653
+     2        106      -27.5           24.684263              0.369043
+     2        105      -28.0           25.165531              0.112225
+     2        104      -28.5           25.647432              0.594126
+     2        103      -29.0           26.129940              1.076634
+     3        107      -27.0           24.213760              0.839546
+     3        106      -27.5           24.694382              0.358924
+     3        105      -28.0           25.175652              0.122346
+     3        104      -28.5           25.657541              0.604235
+     3        103      -29.0           26.140020              1.086714
+     4        107      -27.0           24.223381              0.829925
+     4        106      -27.5           24.704058              0.349248
+     4        105      -28.0           25.185364              0.132058
+     4        104      -28.5           25.667274              0.613968
+     4        103      -29.0           26.149761              1.096455
+     5        107      -27.0           24.232456              0.820850
+     5        106      -27.5           24.713224              0.340082
+     5        105      -28.0           25.194609              0.141303
+     5        104      -28.5           25.676577              0.623271
+     5        103      -29.0           26.159105              1.105799

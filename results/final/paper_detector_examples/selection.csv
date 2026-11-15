@@ -1,0 +1,2 @@
+weather,severity,trial,sample_id,distance_to_sign_m,raw_frame,selection_rule,route_s_m
+clear,0,1,139,9.684497,data/recordings/stop3_clear_0_drift_0p75_trial_1/frames/0139.png,all four STOP detectors correct; prefer 8-16 m; closest to 12 m,-11.0

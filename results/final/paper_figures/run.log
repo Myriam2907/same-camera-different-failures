@@ -1,0 +1,28 @@
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig1_reliability_heatmap.png
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig1_reliability_heatmap.pdf
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig2_stop_reliability_curves.png
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig2_stop_reliability_curves.pdf
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig3_monitor_task_mismatch.png
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig3_monitor_task_mismatch.pdf
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig4_camera_pipeline_sensitivity.png
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig4_camera_pipeline_sensitivity.pdf
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig5_lane_range_dependence.png
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig5_lane_range_dependence.pdf
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig6_hsv_fog30_fog45_paired.png
+Saved: /home/cpsslab/same-camera-different-failures/results/final/paper_figures/fig6_hsv_fog30_fog45_paired.pdf
+
+==========================================================================================
+PAPER FIGURES COMPLETE
+==========================================================================================
+
+Main-paper candidates:
+  Fig 1: reliability heatmap
+  Fig 2: STOP reliability curves
+  Fig 3: image-monitor-task mismatch
+  Fig 5: lane range dependence
+
+Diagnostic / supplementary:
+  Fig 4: camera-pipeline sensitivity
+  Fig 6: paired Fog30/Fog45 exposure diagnostic
+
+Output directory: /home/cpsslab/same-camera-different-failures/results/final/paper_figures
